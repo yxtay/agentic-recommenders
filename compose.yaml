@@ -1,0 +1,15 @@
+services:
+  app:
+    image: ghcr.io/yxtay/transformer-recommenders:main
+    build:
+      cache_from:
+        - ghcr.io/yxtay/transformer-recommenders:cache
+        - ghcr.io/yxtay/transformer-recommenders:main
+    volumes:
+      - ./data:/work/app/data
+    healthcheck:
+      test: [CMD, uv, run, seq_train, fit, --print_config]
+    cap_drop:
+      - all
+    security_opt:
+      - no-new-privileges:true

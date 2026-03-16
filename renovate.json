@@ -1,0 +1,35 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:best-practices",
+    "security:openssf-scorecard",
+    ":separateMultipleMajorReleases",
+    ":automergeMinor",
+    ":automergeDigest",
+    ":maintainLockFilesWeekly",
+    "group:allNonMajor",
+    "group:allDigest"
+  ],
+  "dependencyDashboardOSVVulnerabilitySummary": "all",
+  "osvVulnerabilityAlerts": true,
+  "vulnerabilityAlerts": {
+    "labels": ["security"],
+    "automerge": true,
+    "enabled": true
+  },
+  "pre-commit": {
+    "enabled": true
+  },
+  "packageRules": [
+    {
+      "automerge": false,
+      "groupName": "python",
+      "matchPackageNames": ["python"],
+      "matchUpdateTypes": ["minor"]
+    },
+    {
+      "matchPackageNames": ["lightning"],
+      "allowedVersions": "<2.5.1 || >=2.5.7"
+    }
+  ]
+}

@@ -23,6 +23,7 @@ dependencies = [
   "sentence-transformers[onnx,train]~=5.0",
   "tensorboard~=2.18",
   "torch~=2.5",
+  "pydantic-settings~=2.0",
 ]
 
 [dependency-groups]

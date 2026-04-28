@@ -94,7 +94,7 @@ class LanceIndex:
         Returns:
             LanceIndex: Configured LanceIndex with an opened table.
         """
-        self = cls(config)
+        self = cls(config, item_data_model=item_data_model)
         self.open_table()
 
         assert self.table is not None

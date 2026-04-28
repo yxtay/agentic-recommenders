@@ -100,7 +100,7 @@ requires-dist = [
     { name = "pydantic-ai", specifier = "~=1.43" },
     { name = "pydantic-settings", specifier = "~=2.0" },
     { name = "pylance", specifier = "~=1.0" },
-    { name = "sentence-transformers", extras = ["onnx", "train"], specifier = "~=5.0" },
+    { name = "sentence-transformers", extras = ["onnx", "train"], specifier = "~=5.4" },
     { name = "tensorboard", specifier = "~=2.18" },
     { name = "torch", specifier = "~=2.5", index = "https://download.pytorch.org/whl/cpu" },
 ]

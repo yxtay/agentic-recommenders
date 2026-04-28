@@ -61,3 +61,4 @@ COPY agentic_rec agentic_rec
 RUN uv sync --no-default-groups
 
 USER ${USER}
+HEALTHCHECK CMD ["uv", "pip", "list"]

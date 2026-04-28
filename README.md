@@ -16,7 +16,7 @@ The system is served via a BentoML REST endpoint.
 
 ## Architecture
 
-```
+```text
 Request (user_id, top_k)
     │
     ├─ user_understanding(user_id)         → preference summary

@@ -50,7 +50,6 @@ def download_data(
                 for chunk in resp.iter_bytes():
                     f.write(chunk)
         shutil.move(f.name, dest)
-            pathlib.Path(f.name).rename(dest)
 
     logger.info("data downloaded: {}", dest)
     return dest

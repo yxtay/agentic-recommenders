@@ -58,6 +58,7 @@ repos:
     rev: v3.6.1
     hooks:
       - id: editorconfig-checker
+        exclude: ^data/
 
   - repo: https://github.com/hadolint/hadolint
     rev: v2.14.0

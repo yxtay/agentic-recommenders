@@ -5,7 +5,7 @@ build-backend = "poetry.core.masonry.api"
 [project]
 name = "agentic_rec"
 version = "0.1.0"
-description = "Transformer Recommender Models in PyTorch with MovieLens"
+description = "Agentic Recommenders with MovieLens"
 authors = [
   { name = "YuXuan Tay", email = "5795122+yxtay@users.noreply.github.com" },
 ]

@@ -1,7 +1,7 @@
 SUMMARY
 ================================================================================
 
-These files contain 1,000,209 anonymous ratings of approximately 3,900 movies 
+These files contain 1,000,209 anonymous ratings of approximately 3,900 movies
 made by 6,040 MovieLens users who joined MovieLens in 2000.
 
 USAGE LICENSE
@@ -29,7 +29,7 @@ purposes under the following conditions:
        University of Minnesota.
 
 If you have any further questions or comments, please contact GroupLens
-<grouplens-info@cs.umn.edu>. 
+<grouplens-info@cs.umn.edu>.
 
 CITATION
 ================================================================================
@@ -51,24 +51,24 @@ set.
 FURTHER INFORMATION ABOUT THE GROUPLENS RESEARCH PROJECT
 ================================================================================
 
-The GroupLens Research Project is a research group in the Department of 
-Computer Science and Engineering at the University of Minnesota. Members of 
-the GroupLens Research Project are involved in many research projects related 
-to the fields of information filtering, collaborative filtering, and 
-recommender systems. The project is lead by professors John Riedl and Joseph 
-Konstan. The project began to explore automated collaborative filtering in 
-1992, but is most well known for its world wide trial of an automated 
-collaborative filtering system for Usenet news in 1996. Since then the project 
-has expanded its scope to research overall information filtering solutions, 
-integrating in content-based methods as well as improving current collaborative 
+The GroupLens Research Project is a research group in the Department of
+Computer Science and Engineering at the University of Minnesota. Members of
+the GroupLens Research Project are involved in many research projects related
+to the fields of information filtering, collaborative filtering, and
+recommender systems. The project is lead by professors John Riedl and Joseph
+Konstan. The project began to explore automated collaborative filtering in
+1992, but is most well known for its world wide trial of an automated
+collaborative filtering system for Usenet news in 1996. Since then the project
+has expanded its scope to research overall information filtering solutions,
+integrating in content-based methods as well as improving current collaborative
 filtering technology.
 
-Further information on the GroupLens Research project, including research 
+Further information on the GroupLens Research project, including research
 publications, can be found at the following web site:
-        
+
         http://www.grouplens.org/
 
-GroupLens Research currently operates a movie recommender based on 
+GroupLens Research currently operates a movie recommender based on
 collaborative filtering:
 
         http://www.movielens.org/
@@ -81,7 +81,7 @@ following format:
 
 UserID::MovieID::Rating::Timestamp
 
-- UserIDs range between 1 and 6040 
+- UserIDs range between 1 and 6040
 - MovieIDs range between 1 and 3952
 - Ratings are made on a 5-star scale (whole-star ratings only)
 - Timestamp is represented in seconds since the epoch as returned by time(2)

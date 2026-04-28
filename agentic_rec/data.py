@@ -6,8 +6,9 @@ import tempfile
 
 import pandas as pd
 import polars as pl
-from agentic_rec.params import DATA_DIR, MOVIELENS_1M_URL
 from loguru import logger
+
+from agentic_rec.params import DATA_DIR, MOVIELENS_1M_URL
 
 ###
 # download data

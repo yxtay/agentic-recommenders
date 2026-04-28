@@ -57,6 +57,7 @@ BentoML /recommend → RecommendResponse(item_ids, explanations)
 ### User context (Tool 1)
 
 Built from `data/ml-1m/users.parquet`:
+
 - `user_text`: demographic JSON (`gender`, `age`, `occupation`, `zipcode`)
 - `history`: list of train-split interactions sorted by `datetime`, each containing `item_id`, `item_text` (title + genres), `event_value` (rating 1–5), `datetime`
 
@@ -121,10 +122,12 @@ export OPENAI_API_KEY="sk-..."
 ## BentoML Service
 
 `agentic_rec/service.py` defines a `@bentoml.service` with:
+
 - `POST /recommend` accepting `RecommendRequest`, returning `RecommendResponse`
 - Dependencies: `LanceIndex` (loaded once on startup), `Settings` (from env)
 
 Run with:
+
 ```bash
 uv run bentoml serve agentic_rec.service:RecommenderService
 ```

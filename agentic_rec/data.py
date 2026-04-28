@@ -141,6 +141,7 @@ def load_items(src_dir: str = DATA_DIR) -> pl.LazyFrame:
         .rename({"movie_id": "item_id"})
         .with_columns(genres=pl.col("genres").str.split("|"))
         .with_columns(item_text=pl.struct("title", "genres").struct.json_encode())
+        .rename(lambda col: "item_" + col if not col.startswith("item_") else col)
     )
     logger.info("items loaded: {}, shape: {}", items_dat, items.shape)
     return items.lazy()
@@ -184,6 +185,7 @@ def load_users(src_dir: str = DATA_DIR) -> pl.LazyFrame:
                 "gender", "age", "occupation", "zipcode"
             ).struct.json_encode()
         )
+        .rename(lambda col: "user_" + col if not col.startswith("user_") else col)
     )
     logger.info("users loaded: {}, shape: {}", users_dat, users.shape)
     return users.lazy()

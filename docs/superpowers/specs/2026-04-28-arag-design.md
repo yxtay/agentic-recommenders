@@ -95,30 +95,12 @@ class RecommendResponse(pydantic.BaseModel):
 
 ## Modules
 
-<<<<<<< Updated upstream
-
-| File                     | Responsibility                                                                        |
-|--------------------------|---------------------------------------------------------------------------------------|
-| `agentic_rec/agent.py`   | `Agent` definition, system prompt, all five tools, pydantic result types              |
-| `agentic_rec/index.py`   | Extend `LanceIndex` with `fulltext_search` and `hybrid_search` methods                |
-| `agentic_rec/service.py` | BentoML `Service` wrapping the agent; `/recommend` POST endpoint                      |
+| File                     | Responsibility                                                                         |
+| ------------------------ | -------------------------------------------------------------------------------------- |
+| `agentic_rec/agent.py`   | `Agent` definition, system prompt, all five tools, pydantic result types               |
+| `agentic_rec/index.py`   | Extend `LanceIndex` with `fulltext_search` and `hybrid_search` methods                 |
+| `agentic_rec/service.py` | BentoML `Service` wrapping the agent; `/recommend` POST endpoint                       |
 | `agentic_rec/params.py`  | Add `LLM_MODEL` constant (default `"openai:gpt-4o"`); `NLI_THRESHOLD` (default `0.5`) |
-||||||| Stash base
-| File | Responsibility |
-|---|---|
-| `agentic_rec/agent.py` | `Agent` definition, system prompt, all five tools, pydantic result types |
-| `agentic_rec/index.py` | Extend `LanceIndex` with `fulltext_search` and `hybrid_search` methods |
-| `agentic_rec/service.py` | BentoML `Service` wrapping the agent; `/recommend` POST endpoint |
-| `agentic_rec/params.py` | Add `LLM_MODEL` constant (default `"openai:gpt-4o"`); `NLI_THRESHOLD` (default `0.5`) |
-=======
-| File | Responsibility |
-| --- | --- |
-| `agentic_rec/agent.py` | `Agent` definition, system prompt, all five tools, pydantic result types |
-| `agentic_rec/index.py` | Extend `LanceIndex` with `fulltext_search` and `hybrid_search` methods |
-| `agentic_rec/service.py` | BentoML `Service` wrapping the agent; `/recommend` POST endpoint |
-| `agentic_rec/params.py` | Add `LLM_MODEL` constant (default `"openai:gpt-4o"`); `NLI_THRESHOLD` (default `0.5`) |
-
->>>>>>> Stashed changes
 
 `data.py` is unchanged. `params.py` gains two new constants.
 

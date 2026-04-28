@@ -61,4 +61,3 @@ COPY agentic_rec agentic_rec
 RUN uv sync --no-default-groups
 
 USER ${USER}
-HEALTHCHECK CMD [ uv, run, seq_train, fit, --print_config ]

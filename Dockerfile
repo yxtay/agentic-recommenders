@@ -57,7 +57,7 @@ RUN uv python install && \
     uv pip list
 
 # set up project
-COPY xfmr_rec xfmr_rec
+COPY agentic_rec agentic_rec
 RUN uv sync --no-default-groups
 
 USER ${USER}

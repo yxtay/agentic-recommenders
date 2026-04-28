@@ -40,6 +40,7 @@ class LanceIndexConfig(pydantic.BaseModel):
     id_col: str = "item_id"
     text_col: str = "item_text"
     index_metric: Literal["l2", "dot", "cosine"] = "cosine"
+    embedding_col: str = "vector"
 
 
 class LanceIndex:

@@ -44,11 +44,12 @@ def download_data(
     # download zip
     if not dest.exists() or overwrite:
         logger.info("downloading data: {}", url)
-        # download to temp file, then move to dest
-        with httpx.stream("GET", url) as resp, tempfile.NamedTemporaryFile() as f:
-            resp.raise_for_status()
-            for chunk in resp.iter_bytes():
-                f.write(chunk)
+        with tempfile.NamedTemporaryFile(delete=False) as f:
+            with httpx.stream("GET", url) as resp:
+                resp.raise_for_status()
+                for chunk in resp.iter_bytes():
+                    f.write(chunk)
+        shutil.move(f.name, dest)
             pathlib.Path(f.name).rename(dest)
 
     logger.info("data downloaded: {}", dest)

@@ -48,9 +48,7 @@ class LanceIndex:
     Index implementation using LanceDB for fast vector and text search.
     """
 
-    def __init__(
-        self, config: LanceIndexConfig, item_data_model: type[pydantic.BaseModel]
-    ) -> None:
+    def __init__(self, config: LanceIndexConfig) -> None:
         """Initialize LanceIndex with configuration and optional table.
 
         Args:
@@ -60,7 +58,6 @@ class LanceIndex:
         super().__init__()
         self.config = config
         self.table: lancedb.table.Table | None = None
-        self.item_data_model = item_data_model
 
     def save(self, path: str) -> None:
         """Copy the underlying LanceDB store to a new path.
@@ -94,7 +91,7 @@ class LanceIndex:
         Returns:
             LanceIndex: Configured LanceIndex with an opened table.
         """
-        self = cls(config, item_data_model=item_data_model)
+        self = cls(config)
         self.open_table()
 
         assert self.table is not None

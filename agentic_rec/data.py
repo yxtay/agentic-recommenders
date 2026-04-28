@@ -138,10 +138,9 @@ def load_items(src_dir: str = DATA_DIR) -> pl.LazyFrame:
             encoding="iso-8859-1",
         )
         .pipe(pl.from_pandas)
-        .rename({"movie_id": "item_id"})
+        .rename({"movie_id": "id"})
         .with_columns(genres=pl.col("genres").str.split("|"))
-        .with_columns(item_text=pl.struct("title", "genres").struct.json_encode())
-        .rename(lambda col: "item_" + col if not col.startswith("item_") else col)
+        .with_columns(text=pl.struct("title", "genres").struct.json_encode())
     )
     logger.info("items loaded: {}, shape: {}", items_dat, items.shape)
     return items.lazy()
@@ -180,12 +179,12 @@ def load_users(src_dir: str = DATA_DIR) -> pl.LazyFrame:
             engine="python",
         )
         .pipe(pl.from_pandas)
+        .rename({"user_id": "id"})
         .with_columns(
-            user_text=pl.struct(
+            text=pl.struct(
                 "gender", "age", "occupation", "zipcode"
             ).struct.json_encode()
         )
-        .rename(lambda col: "user_" + col if not col.startswith("user_") else col)
     )
     logger.info("users loaded: {}, shape: {}", users_dat, users.shape)
     return users.lazy()
@@ -339,8 +338,22 @@ def process_events(
 
     events_processed = (
         events.lazy()
-        .join(items.lazy(), on="item_id", how="left", validate="m:1")
-        .join(users.lazy(), on="user_id", how="left", validate="m:1")
+        .join(
+            items.lazy().rename(
+                lambda col: "item_" + col if not col.startswith("item_") else col
+            ),
+            on="item_id",
+            how="left",
+            validate="m:1",
+        )
+        .join(
+            users.lazy().rename(
+                lambda col: "user_" + col if not col.startswith("user_") else col
+            ),
+            on="user_id",
+            how="left",
+            validate="m:1",
+        )
         .collect()
     )
 
@@ -379,10 +392,12 @@ def process_items(
         logger.info("items loaded: {}", items_parquet)
         return items_processed
 
-    items_train = events.lazy().group_by("item_id").agg(pl.any("is_train"))
+    items_train = (
+        events.lazy().rename({"item_id": "id"}).group_by("id").agg(pl.any("is_train"))
+    )
     items_processed = (
         items.lazy()
-        .join(items_train, on="item_id", how="left", validate="1:1")
+        .join(items_train, on="id", how="left", validate="1:1")
         .with_columns(is_val=True, is_test=True, is_predict=True)
         .collect()
     )
@@ -432,7 +447,8 @@ def process_users(
     ]
     users_interactions = (
         events.lazy()
-        .group_by("user_id")
+        .rename({"user_id": "id"})
+        .group_by("id")
         .agg(
             history=pl.struct(*activity_cols).filter("is_train"),
             target=pl.struct(*activity_cols).filter(~pl.col("is_train")),
@@ -458,7 +474,7 @@ def process_users(
     )
     users_processed = (
         users.lazy()
-        .join(users_interactions, on="user_id", how="left", validate="1:1")
+        .join(users_interactions, on="id", how="left", validate="1:1")
         .collect()
     )
 

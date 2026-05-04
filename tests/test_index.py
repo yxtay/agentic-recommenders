@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pathlib
+
 import datasets
 import numpy as np
 import pytest
@@ -165,3 +167,26 @@ class TestGetIds:
         result = indexed_index.get_ids(["5", "nonexistent-999"])
         assert len(result) == 1
         assert result["id"][0] == "5"
+
+
+class TestSaveLoad:
+    def test_save_creates_directory(
+        self, indexed_index: LanceIndex, tmp_path: pathlib.Path
+    ) -> None:
+        save_path = str(tmp_path / "saved_index")
+        indexed_index.save(save_path)
+        assert pathlib.Path(save_path).is_dir()
+
+    def test_load_opens_table(
+        self, indexed_index: LanceIndex, tmp_path: pathlib.Path
+    ) -> None:
+        save_path = str(tmp_path / "loaded_index")
+        indexed_index.save(save_path)
+
+        config = LanceIndexConfig(
+            lancedb_path=save_path,
+            table_name=indexed_index.config.table_name,
+        )
+        loaded = LanceIndex.load(config)
+        assert loaded.table is not None
+        assert loaded.table.count_rows() == indexed_index.table.count_rows()

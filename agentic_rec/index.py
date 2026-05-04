@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import datetime
 import math
+import shutil
 from functools import cached_property
 from typing import TYPE_CHECKING, Any
 
@@ -20,6 +21,7 @@ if TYPE_CHECKING:
     import datasets
     import lancedb
     import lancedb.table
+    from lancedb.pydantic import LanceModel
 
 
 class LanceIndexConfig(pydantic.BaseModel):
@@ -51,15 +53,13 @@ class LanceIndex:
         )
 
     @cached_property
-    def schema(self) -> type:
+    def schema(self) -> type[LanceModel]:
         from lancedb.pydantic import LanceModel, Vector
-
-        embedder = self.embedder
 
         class ItemSchema(LanceModel):
             id: str
-            text: str = embedder.SourceField()
-            vector: Vector(embedder.ndims()) = embedder.VectorField()
+            text: str = self.embedder.SourceField()
+            vector: Vector(self.embedder.ndims()) = self.embedder.VectorField()  # type: ignore[valid-type]
 
         return ItemSchema
 
@@ -73,14 +73,24 @@ class LanceIndex:
         )
 
     def save(self, path: str) -> None:
-        pass
+        shutil.copytree(self.config.lancedb_path, path)
 
     @classmethod
     def load(cls, config: LanceIndexConfig) -> LanceIndex:
-        return cls(config)
+        index = cls(config)
+        index._open_table()
+        return index
 
     def _open_table(self) -> lancedb.table.Table:
-        pass
+        import lancedb
+
+        db = lancedb.connect(self.config.lancedb_path)
+        self.table = db.open_table(self.config.table_name)
+        logger.info(f"{self.__class__.__name__}: {self.table}")
+        logger.info(
+            f"num_items: {self.table.count_rows()}, columns: {self.table.schema.names}"
+        )
+        return self.table
 
     def index_data(
         self, dataset: datasets.Dataset, *, overwrite: bool = False
@@ -105,7 +115,7 @@ class LanceIndex:
         self.table = db.create_table(
             self.config.table_name,
             data=arrow_data.to_batches(max_chunksize=1024),
-            schema=self.schema,
+            schema=self.schema,  # type: ignore[arg-type]
             mode="overwrite",
         )
 
@@ -147,20 +157,18 @@ class LanceIndex:
         import datasets
         from sqlalchemy import column, literal
 
-        filter_str = None
-        if exclude_ids:
-            expr = column("id").not_in([literal(v) for v in exclude_ids])
-            filter_str = str(expr.compile(compile_kwargs={"literal_binds": True}))
-
         query = (
             self.table.search(text, query_type="hybrid")
             .rerank(self.reranker)
             .limit(top_k)
         )
-        if filter_str:
+
+        if exclude_ids:
+            expr = column("id").not_in([literal(v) for v in exclude_ids])
+            filter_str = str(expr.compile(compile_kwargs={"literal_binds": True}))
             query = query.where(filter_str, prefilter=True)
 
-        return datasets.Dataset(query.to_arrow())
+        return datasets.Dataset(query.to_arrow())  # type: ignore[arg-type]
 
     def get_ids(self, ids: list[str]) -> datasets.Dataset:
         assert self.table is not None
@@ -169,4 +177,4 @@ class LanceIndex:
 
         expr = column("id").in_([literal(v) for v in ids])
         filter_str = str(expr.compile(compile_kwargs={"literal_binds": True}))
-        return datasets.Dataset(self.table.search().where(filter_str).to_arrow())
+        return datasets.Dataset(self.table.search().where(filter_str).to_arrow())  # type: ignore[arg-type]

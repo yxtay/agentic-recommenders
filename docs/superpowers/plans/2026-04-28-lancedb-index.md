@@ -4,7 +4,7 @@
 
 **Goal:** Rewrite `LanceIndex` to use `LanceModel` for automatic embedding, hybrid search with answerdotai reranking, and sqlalchemy-built WHERE clauses for SQL injection safety.
 
-**Architecture:** `LanceIndexConfig` holds tunable parameters (paths, model names, nprobes, refine_factor). `LanceIndex` wraps a LanceDB table; it lazily loads the embedder, schema, and reranker on first use. `index_data` creates the table and all three index types; `search` runs hybrid (vector + FTS) search and reranks results; `get_ids` does scalar-indexed point lookups.
+**Architecture:** `LanceIndexConfig` holds tunable parameters (paths, model names). `LanceIndex` wraps a LanceDB table; it lazily loads the embedder, schema, and reranker on first use. `index_data` creates the table and all three index types; `search` runs hybrid (vector + FTS) search and reranks results; `get_ids` does scalar-indexed point lookups.
 
 **Tech Stack:** lancedb 0.30, sentence-transformers (via lancedb registry), answerdotai `rerankers`, sqlalchemy (filter string generation), HuggingFace `datasets`, pydantic.
 
@@ -120,17 +120,13 @@ class TestLanceIndexConfig:
         config = LanceIndexConfig()
         assert config.lancedb_path == LANCE_DB_PATH
         assert config.table_name == ITEMS_TABLE_NAME
-        assert config.embedder_model_name == EMBEDDER_NAME
+        assert config.embedder_name == EMBEDDER_NAME
         assert config.embedder_device == "cpu"
-        assert config.reranker_model_name == RERANKER_NAME
-        assert config.reranker_model_type == "cross-encoder"
-        assert config.nprobes == 8
-        assert config.refine_factor == 4
-
+        assert config.reranker_name == RERANKER_NAME
+        assert config.reranker_type == "cross-encoder"
     def test_custom_values(self):
-        config = LanceIndexConfig(lancedb_path="/tmp/test", nprobes=16)
+        config = LanceIndexConfig(lancedb_path="/tmp/test")
         assert config.lancedb_path == "/tmp/test"
-        assert config.nprobes == 16
 ```
 
 - [ ] **Step 2: Run tests to verify they fail**
@@ -173,12 +169,10 @@ if TYPE_CHECKING:
 class LanceIndexConfig(pydantic.BaseModel):
     lancedb_path: str = LANCE_DB_PATH
     table_name: str = ITEMS_TABLE_NAME
-    embedder_model_name: str = EMBEDDER_NAME
+    embedder_name: str = EMBEDDER_NAME
     embedder_device: str = "cpu"
-    reranker_model_name: str = RERANKER_NAME
-    reranker_model_type: str = "cross-encoder"
-    nprobes: int = 8
-    refine_factor: int = 4
+    reranker_name: str = RERANKER_NAME
+    reranker_type: str = "cross-encoder"
 
 
 class LanceIndex:
@@ -297,7 +291,7 @@ class LanceIndex:
             from lancedb.embeddings import get_registry
 
             self._embedder = get_registry().get("sentence-transformers").create(
-                name=self.config.embedder_model_name,
+                name=self.config.embedder_name,
                 device=self.config.embedder_device,
             )
         return self._embedder
@@ -314,8 +308,8 @@ class LanceIndex:
             from rerankers import Reranker
 
             self._reranker = Reranker(
-                self.config.reranker_model_name,
-                model_type=self.config.reranker_model_type,
+                self.config.reranker_name,
+                model_type=self.config.reranker_type,
             )
         return self._reranker
 
@@ -585,8 +579,6 @@ Replace the `search` stub:
 
         query = (
             self.table.search(text, query_type="hybrid")
-            .nprobes(self.config.nprobes)
-            .refine_factor(self.config.refine_factor)
             .rerank(self.reranker)
             .limit(top_k)
         )

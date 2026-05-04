@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import datetime
 import math
+from functools import cached_property
 from typing import TYPE_CHECKING, Any
 
 import pyarrow as pa
@@ -24,12 +25,10 @@ if TYPE_CHECKING:
 class LanceIndexConfig(pydantic.BaseModel):
     lancedb_path: str = LANCE_DB_PATH
     table_name: str = ITEMS_TABLE_NAME
-    embedder_model_name: str = EMBEDDER_NAME
+    embedder_name: str = EMBEDDER_NAME
     embedder_device: str = "cpu"
-    reranker_model_name: str = RERANKER_NAME
-    reranker_model_type: str = "cross-encoder"
-    nprobes: int = 8
-    refine_factor: int = 4
+    reranker_name: str = RERANKER_NAME
+    reranker_type: str = "cross-encoder"
 
 
 class LanceIndex:
@@ -37,43 +36,22 @@ class LanceIndex:
         super().__init__()
         self.config = config
         self.table: lancedb.table.Table | None = None
-        self._embedder: Any | None = None
-        self._schema: type | None = None
-        self._reranker: Any | None = None
 
-    @property
+    @cached_property
     def embedder(self) -> Any:  # noqa: ANN401
-        if self._embedder is None:
-            from lancedb.embeddings import get_registry
+        from lancedb.embeddings import get_registry
 
-            self._embedder = (
-                get_registry()
-                .get("sentence-transformers")
-                .create(
-                    name=self.config.embedder_model_name,
-                    device=self.config.embedder_device,
-                )
+        return (
+            get_registry()
+            .get("sentence-transformers")
+            .create(
+                name=self.config.embedder_name,
+                device=self.config.embedder_device,
             )
-        return self._embedder
+        )
 
-    @property
+    @cached_property
     def schema(self) -> type:
-        if self._schema is None:
-            self._schema = self._build_schema()
-        return self._schema
-
-    @property
-    def reranker(self) -> Any:  # noqa: ANN401
-        if self._reranker is None:
-            from lancedb.rerankers import AnswerdotaiRerankers
-
-            self._reranker = AnswerdotaiRerankers(
-                model_name=self.config.reranker_model_name,
-                model_type=self.config.reranker_model_type,
-            )
-        return self._reranker
-
-    def _build_schema(self) -> type:
         from lancedb.pydantic import LanceModel, Vector
 
         embedder = self.embedder
@@ -84,6 +62,15 @@ class LanceIndex:
             vector: Vector(embedder.ndims()) = embedder.VectorField()
 
         return ItemSchema
+
+    @cached_property
+    def reranker(self) -> Any:  # noqa: ANN401
+        from lancedb.rerankers import AnswerdotaiRerankers
+
+        return AnswerdotaiRerankers(
+            model_name=self.config.reranker_name,
+            model_type=self.config.reranker_type,
+        )
 
     def save(self, path: str) -> None:
         pass
@@ -167,8 +154,6 @@ class LanceIndex:
 
         query = (
             self.table.search(text, query_type="hybrid")
-            .nprobes(self.config.nprobes)
-            .refine_factor(self.config.refine_factor)
             .rerank(self.reranker)
             .limit(top_k)
         )

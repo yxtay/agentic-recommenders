@@ -27,7 +27,7 @@ uv run pytest tests/test_index.py::TestSearch::test_returns_dataset -v
 
 ## Architecture
 
-ARAG (Agentic Retrieval-Augmented Generation) for MovieLens 1M. A single `pydantic-ai` agent orchestrates five tools in sequence: user understanding → retrieval (semantic / FTS / hybrid) → NLI scoring → context summary → item ranking. Served via BentoML.
+ARAG (Agentic Retrieval-Augmented Generation) for MovieLens 1M. A single `pydantic-ai` agent receives a list of past interactions and orchestrates two tools: item-text lookup by ID (`get_ids`) and hybrid candidate retrieval (`search`). Context understanding and item ranking with per-item explanations are done by the agent's LLM directly (no separate tool calls). Served via BentoML.
 
 ### Modules
 
@@ -36,16 +36,25 @@ ARAG (Agentic Retrieval-Augmented Generation) for MovieLens 1M. A single `pydant
 | `agentic_rec/params.py`  | All constants: paths, model names, table names               |
 | `agentic_rec/data.py`    | MovieLens download, Parquet conversion, train/val/test split |
 | `agentic_rec/index.py`   | LanceDB item index: embedding, hybrid search, reranking      |
-| `agentic_rec/agent.py`   | pydantic-ai `Agent` with five tools _(planned)_              |
+| `agentic_rec/agent.py`   | pydantic-ai `Agent` with two tools _(planned)_               |
 | `agentic_rec/service.py` | BentoML `POST /recommend` endpoint _(planned)_               |
 
 ### Data columns
 
-All Parquet columns are prefixed by entity (`item_id`, `item_text`, `user_id`, `user_text`, `event_value`). The LanceDB index uses unprefixed names: `id`, `text`, `vector`.
+All Parquet columns are prefixed by entity (`item_id`, `item_text`, `user_id`, `user_text`, `event_value`, `event_datetime`). The LanceDB index uses unprefixed names: `id`, `text`, `vector`.
 
 ### LanceDB index
 
-`LanceIndex` lazily loads the sentence-transformers embedder and answerdotai reranker on first use. `index_data` takes a `datasets.Dataset` with `id` and `text` columns (pre-computed `vector` is optional — auto-generated if absent). `search` runs hybrid (vector + FTS) with answerdotai `rerank_hybrid`. Filters use `sqlalchemy` Core expressions compiled to strings (injection safety). See `docs/superpowers/specs/2026-04-28-lancedb-index-design.md` for full spec and `docs/superpowers/plans/2026-04-28-lancedb-index.md` for implementation plan.
+`LanceIndex` uses `functools.cached_property` for the sentence-transformers embedder, `LanceModel` schema, and answerdotai reranker — each loaded once on first access. Key methods:
+
+- `index_data(dataset, overwrite=False)` — creates the table from a `datasets.Dataset` with `id` and `text` columns; builds scalar index on `id`, FTS index on `text`, and `IVF_HNSW_PQ` vector index. `vector` is auto-embedded if absent.
+- `search(text, exclude_ids, top_k)` — hybrid (vector + FTS) search with answerdotai reranker; `exclude_ids` filter built via `sqlalchemy` (injection safety).
+- `get_ids(ids)` — scalar-indexed point lookup by ID list.
+- `save(path)` / `load(config)` — copy/open the LanceDB directory.
+
+`LanceIndexConfig` fields: `lancedb_path`, `table_name`, `embedder_name`, `embedder_device`, `reranker_name`, `reranker_type`.
+
+See `docs/superpowers/specs/2026-04-28-lancedb-index-design.md` for full spec.
 
 ### LLM configuration
 

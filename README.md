@@ -4,29 +4,26 @@ Implementation of [ARAG: Agentic Retrieval Augmented Generation for Personalized
 
 ## Overview
 
-ARAG replaces static retrieval heuristics with an LLM agent that reasons about user preferences and item relevance. A single `pydantic-ai` agent orchestrates five tools in sequence:
+ARAG replaces static retrieval heuristics with an LLM agent that reasons about user preferences and item relevance. A single `pydantic-ai` agent receives a list of past interactions and works in three stages:
 
-1. **User Understanding** — builds a natural-language preference summary from the user's rating history and demographics
-2. **Agentic Retrieval** — agent chooses among semantic search, full-text search, or hybrid search against a LanceDB item index
-3. **NLI Scoring** — scores each candidate for semantic alignment with the preference summary
-4. **Context Summary** — filters candidates above a threshold and summarises accepted items
-5. **Item Ranking** — produces a final ranked list of movie recommendations
+1. **Item text lookup** — fetches the text of interacted items from LanceDB by ID
+2. **Context understanding** — LLM builds a preference summary from interaction history and item texts, emphasising recent events
+3. **Candidate retrieval** — agent issues multiple hybrid-search queries (using recent item texts and/or a generated hypothetical item description) for diversity; interacted items are excluded
+4. **Ranking with explanations** — LLM ranks candidates by relevance and diversity, attaching a one-sentence explanation to each recommendation
 
 The system is served via a BentoML REST endpoint.
 
 ## Architecture
 
 ```text
-Request (user_id, top_k)
+Request (interactions: [{item_id, event_timestamp, event_name, event_value}], top_k)
     │
-    ├─ user_understanding(user_id)         → preference summary
-    ├─ semantic_search / fulltext_search
-    │   / hybrid_search (agent chooses)    → ItemCandidate list
-    ├─ nli_score(candidates, summary)      → scored candidates
-    ├─ context_summary(scored, threshold)  → context string
-    └─ rank_items(candidates, summaries)   → ranked item_ids
+    ├─ [Tool 1] get_ids(item_ids)           → {item_id: item_text}
+    ├─ LLM: context understanding           → preference summary
+    ├─ [Tool 2] search(query, exclude_ids)  → candidates  (called 2-4×)
+    └─ LLM: rank + explain                 → RankedItem list
 
-POST /recommend → { item_ids, explanation }
+POST /recommend → [{ item_id, item_text, explanation }]
 ```
 
 ## Requirements
@@ -79,7 +76,13 @@ Request example:
 ```bash
 curl -X POST http://localhost:3000/recommend \
   -H "Content-Type: application/json" \
-  -d '{"user_id": "1", "top_k": 10}'
+  -d '{
+    "interactions": [
+      {"item_id": "1193", "event_timestamp": "2000-12-31T22:12:40", "event_name": "rating", "event_value": 5},
+      {"item_id": "661",  "event_timestamp": "2000-12-31T22:35:09", "event_name": "rating", "event_value": 3}
+    ],
+    "top_k": 10
+  }'
 ```
 
 ## Development

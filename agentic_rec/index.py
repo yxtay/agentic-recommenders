@@ -65,10 +65,10 @@ class LanceIndex:
     @property
     def reranker(self) -> Any:  # noqa: ANN401
         if self._reranker is None:
-            from rerankers import Reranker
+            from lancedb.rerankers import AnswerdotaiRerankers
 
-            self._reranker = Reranker(
-                self.config.reranker_model_name,
+            self._reranker = AnswerdotaiRerankers(
+                model_name=self.config.reranker_model_name,
                 model_type=self.config.reranker_model_type,
             )
         return self._reranker
@@ -156,7 +156,26 @@ class LanceIndex:
         exclude_ids: list[str] | None = None,
         top_k: int = 20,
     ) -> datasets.Dataset:
-        pass
+        assert self.table is not None
+        import datasets
+        from sqlalchemy import column, literal
+
+        filter_str = None
+        if exclude_ids:
+            expr = column("id").not_in([literal(v) for v in exclude_ids])
+            filter_str = str(expr.compile(compile_kwargs={"literal_binds": True}))
+
+        query = (
+            self.table.search(text, query_type="hybrid")
+            .nprobes(self.config.nprobes)
+            .refine_factor(self.config.refine_factor)
+            .rerank(self.reranker)
+            .limit(top_k)
+        )
+        if filter_str:
+            query = query.where(filter_str, prefilter=True)
+
+        return datasets.Dataset(query.to_arrow())
 
     def get_ids(self, ids: list[str]) -> datasets.Dataset:
         pass

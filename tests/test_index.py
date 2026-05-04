@@ -112,3 +112,47 @@ class TestIndexData:
         original_table = indexed_index.table
         indexed_index.index_data(test_dataset, overwrite=False)
         assert indexed_index.table is original_table
+
+
+class TestSQLFilters:
+    def test_exclude_filter_escapes_injection(self) -> None:
+        from sqlalchemy import column, literal
+
+        ids = ["id1", "id2'--injection"]
+        expr = column("id").not_in([literal(v) for v in ids])
+        filter_str = str(expr.compile(compile_kwargs={"literal_binds": True}))
+        assert "id NOT IN" in filter_str
+        assert "'id1'" in filter_str
+        # single-quote in value is doubled (SQL escaping), not left raw
+        assert "id2''--injection" in filter_str
+
+    def test_include_filter(self) -> None:
+        from sqlalchemy import column, literal
+
+        ids = ["a", "b"]
+        expr = column("id").in_([literal(v) for v in ids])
+        filter_str = str(expr.compile(compile_kwargs={"literal_binds": True}))
+        assert "id IN" in filter_str
+        assert "'a'" in filter_str
+        assert "'b'" in filter_str
+
+
+class TestSearch:
+    def test_returns_dataset(self, indexed_index: LanceIndex) -> None:
+        result = indexed_index.search("comedy film about love", top_k=5)
+        assert isinstance(result, datasets.Dataset)
+
+    def test_top_k_respected(self, indexed_index: LanceIndex) -> None:
+        result = indexed_index.search("drama about adventure", top_k=5)
+        assert len(result) <= 5  # noqa: PLR2004
+
+    def test_exclude_ids(self, indexed_index: LanceIndex) -> None:
+        result = indexed_index.search("comedy", exclude_ids=["0", "1", "2"], top_k=10)
+        returned_ids = result["id"]
+        assert "0" not in returned_ids
+        assert "1" not in returned_ids
+        assert "2" not in returned_ids
+
+    def test_no_exclude_ids_returns_results(self, indexed_index: LanceIndex) -> None:
+        result = indexed_index.search("love story", top_k=5)
+        assert len(result) > 0

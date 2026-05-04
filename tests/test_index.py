@@ -189,4 +189,5 @@ class TestSaveLoad:
         )
         loaded = LanceIndex.load(config)
         assert loaded.table is not None
+        assert indexed_index.table is not None
         assert loaded.table.count_rows() == indexed_index.table.count_rows()

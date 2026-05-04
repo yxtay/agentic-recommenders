@@ -8,10 +8,9 @@ USERS_PARQUET = "data/ml-1m/users.parquet"
 EVENTS_PARQUET = "data/ml-1m/events.parquet"
 
 # model
-EMBEDDER_MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
-CROSS_ENCODER_MODEL_NAME = "cross-encoder/ms-marco-MiniLM-L-6-v2"
+EMBEDDER_NAME = "sentence-transformers/all-MiniLM-L6-v2"
+RERANKER_NAME = "cross-encoder/ms-marco-MiniLM-L-6-v2"
 
 ITEMS_TABLE_NAME = "items"
 LANCE_DB_PATH = "lance_db"
-TRANSFORMER_PATH = "transformer"
 USERS_TABLE_NAME = "users"

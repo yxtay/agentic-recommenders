@@ -194,7 +194,7 @@ def load_events(src_dir: str = DATA_DIR) -> pl.LazyFrame:
     """Read MovieLens rating events and return a Polars LazyFrame.
 
     Read ``ratings.dat`` and convert it to a :class:`polars.LazyFrame` with
-    columns ``user_id``, ``item_id``, ``event_value``, ``datetime``,
+    columns ``user_id``, ``item_id``, ``event_value``, ``event_datetime``,
     ``event_name`` and a boolean ``label`` column indicating a positive
     interaction.
 
@@ -224,7 +224,7 @@ def load_events(src_dir: str = DATA_DIR) -> pl.LazyFrame:
         .pipe(pl.from_pandas)
         .rename({"movie_id": "item_id", "rating": "event_value"})
         .with_columns(
-            datetime=pl.from_epoch("timestamp"),
+            event_datetime=pl.from_epoch("timestamp"),
             event_name=pl.lit("rating"),
             label=pl.lit(value=True),
         )
@@ -242,7 +242,7 @@ def train_test_split(
     events: pl.LazyFrame,
     *,
     group_col: str = "user_id",
-    order_col: str = "datetime",
+    order_col: str = "event_datetime",
     train_prop: float = 0.8,
     val_prop: float = 0.2,
 ) -> pl.LazyFrame:
@@ -259,7 +259,7 @@ def train_test_split(
             ordering columns specified by ``group_col`` and ``order_col``.
         group_col: Column used to group events (typically ``user_id``).
         order_col: Column used to order events within each group
-            (typically ``datetime``).
+            (typically ``event_datetime``).
         train_prop: Fraction of each user's earliest interactions reserved
             for training (0 < train_prop < 1).
         val_prop: Fraction of the non-training interactions to mark as
@@ -439,7 +439,7 @@ def process_users(
         return users_processed
 
     activity_cols = [
-        "datetime",
+        "event_datetime",
         "event_name",
         "event_value",
         "label",

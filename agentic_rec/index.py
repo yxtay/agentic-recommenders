@@ -12,10 +12,10 @@ import pydantic
 from loguru import logger
 
 from agentic_rec.params import (
-    CROSS_ENCODER_MODEL_NAME,
-    EMBEDDER_MODEL_NAME,
+    EMBEDDER_NAME,
     ITEMS_TABLE_NAME,
     LANCE_DB_PATH,
+    RERANKER_NAME,
 )
 
 if TYPE_CHECKING:
@@ -34,8 +34,8 @@ class LanceIndexConfig(pydantic.BaseModel):
 
     lancedb_path: str = LANCE_DB_PATH
     table_name: str = ITEMS_TABLE_NAME
-    embedder_model_name: str = EMBEDDER_MODEL_NAME
-    cross_encoder_model_name: str = CROSS_ENCODER_MODEL_NAME
+    embedder_model_name: str = EMBEDDER_NAME
+    cross_encoder_model_name: str = RERANKER_NAME
 
     id_col: str = "item_id"
     text_col: str = "item_text"

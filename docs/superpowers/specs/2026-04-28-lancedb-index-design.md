@@ -17,12 +17,10 @@ Rewrite `LanceIndex` to use `LanceModel` for automatic embedding via lancedb's r
 class LanceIndexConfig(pydantic.BaseModel):
     lancedb_path: str = LANCE_DB_PATH
     table_name: str = ITEMS_TABLE_NAME
-    embedder_model_name: str = EMBEDDER_MODEL_NAME
+    embedder_name: str = EMBEDDER_NAME
     embedder_device: str = "cpu"
-    reranker_model_name: str = CROSS_ENCODER_MODEL_NAME
-    reranker_model_type: str = "cross-encoder"
-    nprobes: int = 8
-    refine_factor: int = 4
+    reranker_name: str = RERANKER_NAME
+    reranker_type: str = "cross-encoder"
 ```
 
 ---
@@ -34,7 +32,7 @@ Built at runtime via `_build_schema()`, using a normal class definition inside t
 ```python
 def _build_schema(self) -> type[LanceModel]:
     embedder = get_registry().get("sentence-transformers").create(
-        name=self.config.embedder_model_name,
+        name=self.config.embedder_name,
         device=self.config.embedder_device,
     )
 
@@ -60,7 +58,7 @@ No `ID_COL`/`TEXT_COL`/`EMBEDDING_COL` constants needed. Filter expressions in `
 ### Lazy-loaded properties
 
 - `_schema`: built once via `_build_schema()` (loads embedder model on first call)
-- `_reranker`: built once via `Reranker(config.reranker_model_name, model_type=config.reranker_model_type)` from answerdotai `rerankers`
+- `_reranker`: built once via `Reranker(config.reranker_name, model_type=config.reranker_type)` from answerdotai `rerankers`
 - `table`: `lancedb.table.Table | None`, set by `open_table()` or `index_data()`
 
 ### `index_data(dataset, overwrite)`
@@ -108,8 +106,6 @@ Steps:
     ```python
     query = (
         table.search(text, query_type="hybrid")
-        .nprobes(config.nprobes)
-        .refine_factor(config.refine_factor)
         .rerank(reranker)
         .limit(top_k)
     )
@@ -119,6 +115,7 @@ Steps:
     ```
 
     lancedb auto-embeds `text` for the vector leg, runs FTS in parallel, then passes both ranked lists to the answerdotai reranker's `rerank_hybrid()` method.
+
 3. Return `datasets.Dataset(result_table)`.
 
 ### `get_ids(ids)`
@@ -153,10 +150,10 @@ All lancedb `.where()` filter strings are built via sqlalchemy Core expressions 
 
 ## Dependencies to Add
 
-| Package | Reason |
-|---|---|
+| Package                   | Reason                                            |
+| ------------------------- | ------------------------------------------------- |
 | `rerankers` (answerdotai) | answerdotai reranker with `rerank_hybrid` support |
-| `sqlalchemy` | explicit pin (currently transitive via mlflow) |
+| `sqlalchemy`              | explicit pin (currently transitive via mlflow)    |
 
 Add to `pyproject.toml` dependencies.
 
@@ -164,4 +161,4 @@ Add to `pyproject.toml` dependencies.
 
 ## What Changes in `params.py`
 
-No new constants needed. `CROSS_ENCODER_MODEL_NAME` stays as the default value source for `LanceIndexConfig.reranker_model_name`.
+No new constants needed. `RERANKER_NAME` stays as the default value source for `LanceIndexConfig.reranker_name`.

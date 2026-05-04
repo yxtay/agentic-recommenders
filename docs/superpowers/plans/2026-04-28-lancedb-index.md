@@ -108,10 +108,10 @@ import datasets
 
 from agentic_rec.index import LanceIndex, LanceIndexConfig
 from agentic_rec.params import (
-    CROSS_ENCODER_MODEL_NAME,
-    EMBEDDER_MODEL_NAME,
+    EMBEDDER_NAME,
     ITEMS_TABLE_NAME,
     LANCE_DB_PATH,
+    RERANKER_NAME,
 )
 
 
@@ -120,9 +120,9 @@ class TestLanceIndexConfig:
         config = LanceIndexConfig()
         assert config.lancedb_path == LANCE_DB_PATH
         assert config.table_name == ITEMS_TABLE_NAME
-        assert config.embedder_model_name == EMBEDDER_MODEL_NAME
+        assert config.embedder_model_name == EMBEDDER_NAME
         assert config.embedder_device == "cpu"
-        assert config.reranker_model_name == CROSS_ENCODER_MODEL_NAME
+        assert config.reranker_model_name == RERANKER_NAME
         assert config.reranker_model_type == "cross-encoder"
         assert config.nprobes == 8
         assert config.refine_factor == 4
@@ -159,10 +159,10 @@ import pydantic
 from loguru import logger
 
 from agentic_rec.params import (
-    CROSS_ENCODER_MODEL_NAME,
-    EMBEDDER_MODEL_NAME,
+    EMBEDDER_NAME,
     ITEMS_TABLE_NAME,
     LANCE_DB_PATH,
+    RERANKER_NAME,
 )
 
 if TYPE_CHECKING:
@@ -173,9 +173,9 @@ if TYPE_CHECKING:
 class LanceIndexConfig(pydantic.BaseModel):
     lancedb_path: str = LANCE_DB_PATH
     table_name: str = ITEMS_TABLE_NAME
-    embedder_model_name: str = EMBEDDER_MODEL_NAME
+    embedder_model_name: str = EMBEDDER_NAME
     embedder_device: str = "cpu"
-    reranker_model_name: str = CROSS_ENCODER_MODEL_NAME
+    reranker_model_name: str = RERANKER_NAME
     reranker_model_type: str = "cross-encoder"
     nprobes: int = 8
     refine_factor: int = 4

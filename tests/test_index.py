@@ -1,6 +1,10 @@
 from __future__ import annotations
 
-from agentic_rec.index import LanceIndexConfig
+import datasets
+import numpy as np
+import pytest
+
+from agentic_rec.index import LanceIndex, LanceIndexConfig
 from agentic_rec.params import (
     EMBEDDER_NAME,
     ITEMS_TABLE_NAME,
@@ -29,3 +33,61 @@ class TestLanceIndexConfig:
         config = LanceIndexConfig(lancedb_path=str(tmp_path), nprobes=_CUSTOM_NPROBES)
         assert config.lancedb_path == str(tmp_path)
         assert config.nprobes == _CUSTOM_NPROBES
+
+
+# ── shared integration fixtures ────────────────────────────────────────────
+
+EMBEDDING_DIM = 384  # all-MiniLM-L6-v2
+
+
+@pytest.fixture(scope="session")
+def test_dataset() -> datasets.Dataset:
+    rng = np.random.default_rng(42)
+    items = [
+        {
+            "id": str(i),
+            "text": (
+                f"Movie {i}: "
+                f"{'Comedy' if i % 2 == 0 else 'Drama'} about "
+                f"{'love' if i % 3 == 0 else 'adventure'}"
+            ),
+            "vector": rng.random(EMBEDDING_DIM).astype(np.float32).tolist(),
+        }
+        for i in range(100)
+    ]
+    return datasets.Dataset.from_list(items)
+
+
+@pytest.fixture(scope="session")
+def lance_config(tmp_path_factory: pytest.TempPathFactory) -> LanceIndexConfig:
+    return LanceIndexConfig(
+        lancedb_path=str(tmp_path_factory.mktemp("lance_db")),
+    )
+
+
+@pytest.fixture(scope="session")
+def indexed_index(
+    lance_config: LanceIndexConfig, test_dataset: datasets.Dataset
+) -> LanceIndex:
+    index = LanceIndex(lance_config)
+    index.index_data(test_dataset)
+    return index
+
+
+# ── schema tests ───────────────────────────────────────────────────────────
+
+
+class TestBuildSchema:
+    def test_schema_fields(self, lance_config: LanceIndexConfig) -> None:
+        from lancedb.pydantic import LanceModel
+
+        index = LanceIndex(lance_config)
+        schema = index.schema
+        assert issubclass(schema, LanceModel)
+        assert "id" in schema.field_names()
+        assert "text" in schema.field_names()
+        assert "vector" in schema.field_names()
+
+    def test_schema_cached(self, lance_config: LanceIndexConfig) -> None:
+        index = LanceIndex(lance_config)
+        assert index.schema is index.schema

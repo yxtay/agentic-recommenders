@@ -37,6 +37,50 @@ class LanceIndex:
         self._schema: type | None = None
         self._reranker: Any | None = None
 
+    @property
+    def embedder(self) -> Any:  # noqa: ANN401
+        if self._embedder is None:
+            from lancedb.embeddings import get_registry
+
+            self._embedder = (
+                get_registry()
+                .get("sentence-transformers")
+                .create(
+                    name=self.config.embedder_model_name,
+                    device=self.config.embedder_device,
+                )
+            )
+        return self._embedder
+
+    @property
+    def schema(self) -> type:
+        if self._schema is None:
+            self._schema = self._build_schema()
+        return self._schema
+
+    @property
+    def reranker(self) -> Any:  # noqa: ANN401
+        if self._reranker is None:
+            from rerankers import Reranker
+
+            self._reranker = Reranker(
+                self.config.reranker_model_name,
+                model_type=self.config.reranker_model_type,
+            )
+        return self._reranker
+
+    def _build_schema(self) -> type:
+        from lancedb.pydantic import LanceModel, Vector
+
+        embedder = self.embedder
+
+        class ItemSchema(LanceModel):
+            id: str
+            text: str = embedder.SourceField()
+            vector: Vector(embedder.ndims()) = embedder.VectorField()
+
+        return ItemSchema
+
     def save(self, path: str) -> None:
         pass
 

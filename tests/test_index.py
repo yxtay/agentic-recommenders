@@ -91,3 +91,24 @@ class TestBuildSchema:
     def test_schema_cached(self, lance_config: LanceIndexConfig) -> None:
         index = LanceIndex(lance_config)
         assert index.schema is index.schema
+
+
+class TestIndexData:
+    def test_table_created(
+        self, indexed_index: LanceIndex, test_dataset: datasets.Dataset
+    ) -> None:
+        assert indexed_index.table is not None
+        assert indexed_index.table.count_rows() == len(test_dataset)
+
+    def test_table_columns(self, indexed_index: LanceIndex) -> None:
+        cols = indexed_index.table.schema.names
+        assert "id" in cols
+        assert "text" in cols
+        assert "vector" in cols
+
+    def test_overwrite_false_skips(
+        self, indexed_index: LanceIndex, test_dataset: datasets.Dataset
+    ) -> None:
+        original_table = indexed_index.table
+        indexed_index.index_data(test_dataset, overwrite=False)
+        assert indexed_index.table is original_table

@@ -1,7 +1,11 @@
 from __future__ import annotations
 
+import datetime
+import logging
+import math
 from typing import TYPE_CHECKING, Any
 
+import pyarrow as pa
 import pydantic
 
 from agentic_rec.params import (
@@ -15,6 +19,8 @@ if TYPE_CHECKING:
     import datasets
     import lancedb
     import lancedb.table
+
+logger = logging.getLogger(__name__)
 
 
 class LanceIndexConfig(pydantic.BaseModel):
@@ -94,7 +100,60 @@ class LanceIndex:
     def index_data(
         self, dataset: datasets.Dataset, *, overwrite: bool = False
     ) -> lancedb.table.Table:
-        pass
+        if self.table is not None and not overwrite:
+            return self.table
+
+        import lancedb
+
+        num_items = len(dataset)
+        embedding_dim = self.embedder.ndims()
+
+        # Scalar index requires pa.string(), not large_string
+        arrow_data = dataset.data
+        id_idx = arrow_data.schema.get_field_index("id")
+        if arrow_data.schema.field("id").type != pa.string():
+            arrow_data = arrow_data.cast(
+                arrow_data.schema.set(id_idx, pa.field("id", pa.string()))
+            )
+
+        db = lancedb.connect(self.config.lancedb_path)
+        self.table = db.create_table(
+            self.config.table_name,
+            data=arrow_data.to_batches(max_chunksize=1024),
+            schema=self.schema,
+            mode="overwrite",
+        )
+
+        self.table.create_scalar_index("id")
+        self.table.create_fts_index("text")
+
+        # IVF_HNSW_PQ: rule-of-thumb num_partitions ~= 4 * sqrt(n)
+        num_partitions = 2 ** int(math.log2(num_items) / 2)
+        num_sub_vectors = embedding_dim // 8
+        # PQ codebook size: num_bits=8 needs >=256 training rows, num_bits=4 needs >=16
+        _pq_min_rows_8bit = 256
+        num_bits = 8 if num_items >= _pq_min_rows_8bit else 4
+        self.table.create_index(
+            vector_column_name="vector",
+            metric="cosine",
+            num_partitions=num_partitions,
+            num_sub_vectors=num_sub_vectors,
+            index_type="IVF_HNSW_PQ",
+            num_bits=num_bits,
+        )
+
+        self.table.optimize(
+            cleanup_older_than=datetime.timedelta(days=0),
+            delete_unverified=True,
+        )
+
+        logger.info("%s: %s", self.__class__.__name__, self.table)
+        logger.info(
+            "num_items: %d, columns: %s",
+            self.table.count_rows(),
+            self.table.schema.names,
+        )
+        return self.table
 
     def search(
         self,

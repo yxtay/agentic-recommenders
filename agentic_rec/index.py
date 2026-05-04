@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 import datetime
-import logging
 import math
 from typing import TYPE_CHECKING, Any
 
 import pyarrow as pa
 import pydantic
+from loguru import logger
 
 from agentic_rec.params import (
     EMBEDDER_NAME,
@@ -19,8 +19,6 @@ if TYPE_CHECKING:
     import datasets
     import lancedb
     import lancedb.table
-
-logger = logging.getLogger(__name__)
 
 
 class LanceIndexConfig(pydantic.BaseModel):
@@ -130,16 +128,15 @@ class LanceIndex:
         # IVF_HNSW_PQ: rule-of-thumb num_partitions ~= 4 * sqrt(n)
         num_partitions = 2 ** int(math.log2(num_items) / 2)
         num_sub_vectors = embedding_dim // 8
-        # PQ codebook size: num_bits=8 needs >=256 training rows, num_bits=4 needs >=16
-        _pq_min_rows_8bit = 256
-        num_bits = 8 if num_items >= _pq_min_rows_8bit else 4
+        # PQ codebook: num_bits=8 requires >=256 training rows, num_bits=4 requires >=16
+        num_bits = 8 if num_items >= 256 else 4  # noqa: PLR2004
         self.table.create_index(
             vector_column_name="vector",
             metric="cosine",
             num_partitions=num_partitions,
             num_sub_vectors=num_sub_vectors,
-            index_type="IVF_HNSW_PQ",
             num_bits=num_bits,
+            index_type="IVF_HNSW_PQ",
         )
 
         self.table.optimize(
@@ -147,11 +144,9 @@ class LanceIndex:
             delete_unverified=True,
         )
 
-        logger.info("%s: %s", self.__class__.__name__, self.table)
+        logger.info(f"{self.__class__.__name__}: {self.table}")
         logger.info(
-            "num_items: %d, columns: %s",
-            self.table.count_rows(),
-            self.table.schema.names,
+            f"num_items: {self.table.count_rows()}, columns: {self.table.schema.names}"
         )
         return self.table
 

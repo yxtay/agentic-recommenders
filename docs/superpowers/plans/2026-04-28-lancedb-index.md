@@ -451,11 +451,13 @@ Replace the `index_data` stub:
         # IVF_HNSW_PQ: rule-of-thumb num_partitions ~= 4 * sqrt(n)
         num_partitions = 2 ** int(math.log2(num_items) / 2)
         num_sub_vectors = embedding_dim // 8
+        num_bits = 8 if num_items >= 256 else 4
         self.table.create_index(
             vector_column_name="vector",
             metric="cosine",
             num_partitions=num_partitions,
             num_sub_vectors=num_sub_vectors,
+            num_bits=num_bits,
             index_type="IVF_HNSW_PQ",
         )
 

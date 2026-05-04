@@ -163,4 +163,10 @@ class LanceIndex:
         return datasets.Dataset(query.to_arrow())
 
     def get_ids(self, ids: list[str]) -> datasets.Dataset:
-        pass
+        assert self.table is not None
+        import datasets
+        from sqlalchemy import column, literal
+
+        expr = column("id").in_([literal(v) for v in ids])
+        filter_str = str(expr.compile(compile_kwargs={"literal_binds": True}))
+        return datasets.Dataset(self.table.search().where(filter_str).to_arrow())

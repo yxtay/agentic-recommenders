@@ -149,3 +149,19 @@ class TestSearch:
     def test_no_exclude_ids_returns_results(self, indexed_index: LanceIndex) -> None:
         result = indexed_index.search("love story", top_k=5)
         assert len(result) > 0
+
+
+class TestGetIds:
+    def test_returns_matching_rows(self, indexed_index: LanceIndex) -> None:
+        result = indexed_index.get_ids(["0", "1", "2"])
+        assert isinstance(result, datasets.Dataset)
+        assert set(result["id"]) == {"0", "1", "2"}
+
+    def test_missing_id_not_returned(self, indexed_index: LanceIndex) -> None:
+        result = indexed_index.get_ids(["nonexistent-999"])
+        assert len(result) == 0
+
+    def test_subset_returned(self, indexed_index: LanceIndex) -> None:
+        result = indexed_index.get_ids(["5", "nonexistent-999"])
+        assert len(result) == 1
+        assert result["id"][0] == "5"

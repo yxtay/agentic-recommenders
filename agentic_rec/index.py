@@ -170,8 +170,8 @@ class LanceIndex:
 
 def main(
     items_parquet: str = ITEMS_PARQUET,
-    lancedb_path: str = LANCE_DB_PATH,
     table_name: str = ITEMS_TABLE_NAME,
+    lancedb_path: str = LANCE_DB_PATH,
     *,
     overwrite: bool = True,
 ) -> None:

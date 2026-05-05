@@ -208,3 +208,5 @@ __marimo__/
 
 /data
 /lance_db
+
+settings.local.json

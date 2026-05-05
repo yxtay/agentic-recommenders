@@ -17,7 +17,7 @@ uv run data
 
 # build LanceDB index for items (default) or users
 uv run index
-uv run index --items_parquet data/ml-1m/users.parquet --table_name users
+uv run index --parquet_path data/ml-1m/users.parquet --table_name users
 
 # serve BentoML endpoint
 uv run bentoml serve agentic_rec.service:RecommenderService

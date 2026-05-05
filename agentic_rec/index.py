@@ -170,7 +170,7 @@ class LanceIndex:
 
 
 def main(
-    items_parquet: str = ITEMS_PARQUET,
+    parquet_path: str = ITEMS_PARQUET,
     table_name: str = ITEMS_TABLE_NAME,
     lancedb_path: str = LANCE_DB_PATH,
     data_dir: str = DATA_DIR,
@@ -180,8 +180,8 @@ def main(
     import agentic_rec.data
 
     agentic_rec.data.main(data_dir=data_dir, overwrite=False)
-    dataset = datasets.Dataset.from_parquet(items_parquet)
-    logger.info("dataset loaded: {}, shape: {}", items_parquet, dataset.shape)
+    dataset = datasets.Dataset.from_parquet(parquet_path)
+    logger.info("dataset loaded: {}, shape: {}", parquet_path, dataset.shape)
 
     config = LanceIndexConfig(lancedb_path=lancedb_path, table_name=table_name)
     index = LanceIndex(config)

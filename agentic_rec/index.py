@@ -13,6 +13,7 @@ from loguru import logger
 from sqlalchemy import column, literal
 
 from agentic_rec.params import (
+    DATA_DIR,
     EMBEDDER_NAME,
     ITEMS_PARQUET,
     ITEMS_TABLE_NAME,
@@ -99,7 +100,7 @@ class LanceIndex:
         import pyarrow as pa
 
         # Scalar index requires pa.string(), not large_string
-        arrow_data = dataset.data
+        arrow_data = dataset.select_columns(["id", "text"]).data
         id_idx = arrow_data.schema.get_field_index("id")
         if arrow_data.schema.field("id").type != pa.string():
             arrow_data = arrow_data.cast(
@@ -172,12 +173,14 @@ def main(
     items_parquet: str = ITEMS_PARQUET,
     table_name: str = ITEMS_TABLE_NAME,
     lancedb_path: str = LANCE_DB_PATH,
+    data_dir: str = DATA_DIR,
     *,
     overwrite: bool = True,
 ) -> None:
-    dataset = datasets.Dataset.from_parquet(items_parquet).select_columns(
-        ["id", "text"]
-    )
+    import agentic_rec.data
+
+    agentic_rec.data.main(data_dir=data_dir, overwrite=False)
+    dataset = datasets.Dataset.from_parquet(items_parquet)
     logger.info("dataset loaded: {}, shape: {}", items_parquet, dataset.shape)
 
     config = LanceIndexConfig(lancedb_path=lancedb_path, table_name=table_name)

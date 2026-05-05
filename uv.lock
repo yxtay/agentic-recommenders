@@ -41,12 +41,11 @@ dependencies = [
     { name = "bentoml" },
     { name = "datasets" },
     { name = "jsonargparse", extra = ["signatures"] },
-    { name = "lancedb" },
+    { name = "lancedb", extra = ["pylance"] },
     { name = "loguru" },
     { name = "polars", extra = ["pandas"] },
     { name = "pydantic-ai" },
     { name = "pydantic-settings" },
-    { name = "pylance" },
     { name = "rerankers", extra = ["transformers"] },
     { name = "sentence-transformers" },
     { name = "sqlalchemy" },
@@ -64,15 +63,14 @@ dev = [
 requires-dist = [
     { name = "bentoml", specifier = "~=1.3" },
     { name = "datasets", specifier = "~=4.0" },
-    { name = "jsonargparse", extras = ["signatures"], specifier = ">=4.48.0" },
-    { name = "lancedb", specifier = ">=0.19,<1.0" },
+    { name = "jsonargparse", extras = ["signatures"], specifier = ">=4.48" },
+    { name = "lancedb", extras = ["pylance"], specifier = ">=0.19,<1.0" },
     { name = "loguru", specifier = ">=0.7,<1.0" },
     { name = "polars", extras = ["pandas"], specifier = "~=1.40" },
     { name = "pydantic-ai", specifier = "~=1.43" },
     { name = "pydantic-settings", specifier = "~=2.0" },
-    { name = "pylance", specifier = "~=4.0" },
     { name = "rerankers", extras = ["transformers"], specifier = ">=0.9" },
-    { name = "sentence-transformers", specifier = "~=5.4" },
+    { name = "sentence-transformers", specifier = ">=5.4" },
     { name = "sqlalchemy", specifier = ">=2.0" },
 ]
 
@@ -2158,6 +2156,11 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/74/4b/5bfeacf948cfc3452b286a792dcbbfaf04649ef0820e1d3790d47bf5527e/lancedb-0.30.2-cp39-abi3-manylinux_2_28_aarch64.whl", hash = "sha256:8b161cb1da04ae6ad45afe10093cfe4107821d93e7712b50200c435d6f4c8a20", size = 43641193, upload-time = "2026-03-31T22:51:13.63Z" },
     { url = "https://files.pythonhosted.org/packages/28/4c/a51af0ce1d18fd86afa3e8538a81abf5523d24632abe7665ce6795b8009d/lancedb-0.30.2-cp39-abi3-manylinux_2_28_x86_64.whl", hash = "sha256:7fabc0f57944fd79ddef62ed8cf4df770654b172b1ad1019a999304fed3169f3", size = 46665361, upload-time = "2026-03-31T22:54:20.282Z" },
     { url = "https://files.pythonhosted.org/packages/88/d0/7e44e8143ac2dae8979ba882cc33d4af7b8da4741fb0361497e69b4a4379/lancedb-0.30.2-cp39-abi3-win_amd64.whl", hash = "sha256:531da53002c1c6fda829afccc8ced3056ef58eb036f09ddb2b94a06877ecc66c", size = 50940681, upload-time = "2026-03-31T23:25:52.35Z" },
+]
+
+[package.optional-dependencies]
+pylance = [
+    { name = "pylance" },
 ]
 
 [[package]]

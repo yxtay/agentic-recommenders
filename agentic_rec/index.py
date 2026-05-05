@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import datetime
-import math
 import shutil
 from functools import cached_property
 from typing import TYPE_CHECKING, Any
@@ -15,6 +14,7 @@ from sqlalchemy import column, literal
 
 from agentic_rec.params import (
     EMBEDDER_NAME,
+    ITEMS_PARQUET,
     ITEMS_TABLE_NAME,
     LANCE_DB_PATH,
     RERANKER_NAME,
@@ -98,9 +98,6 @@ class LanceIndex:
 
         import pyarrow as pa
 
-        num_items = len(dataset)
-        embedding_dim = self.embedder.ndims()
-
         # Scalar index requires pa.string(), not large_string
         arrow_data = dataset.data
         id_idx = arrow_data.schema.get_field_index("id")
@@ -120,18 +117,10 @@ class LanceIndex:
         self.table.create_scalar_index("id")
         self.table.create_fts_index("text")
 
-        # IVF_HNSW_PQ: rule-of-thumb num_partitions ~= 4 * sqrt(n)
-        num_partitions = 2 ** int(math.log2(num_items) / 2)
-        num_sub_vectors = embedding_dim // 8
-        # PQ codebook: num_bits=8 requires >=256 training rows, num_bits=4 requires >=16
-        num_bits = 8 if num_items >= 256 else 4  # noqa: PLR2004
         self.table.create_index(
             vector_column_name="vector",
             metric="cosine",
-            num_partitions=num_partitions,
-            num_sub_vectors=num_sub_vectors,
-            num_bits=num_bits,
-            index_type="IVF_HNSW_PQ",
+            index_type="IVF_RQ",
         )
 
         self.table.optimize(
@@ -164,7 +153,9 @@ class LanceIndex:
             filter_str = str(expr.compile(compile_kwargs={"literal_binds": True}))
             query = query.where(filter_str, prefilter=True)
 
-        return datasets.Dataset(query.to_arrow())  # type: ignore[arg-type]
+        return datasets.Dataset(query.to_arrow()).rename_column(
+            "_relevance_score", "score"
+        )  # type: ignore[arg-type]
 
     def get_ids(self, ids: list[str]) -> datasets.Dataset:
         assert self.table is not None
@@ -175,3 +166,37 @@ class LanceIndex:
         expr = column("id").in_([literal(v) for v in ids])
         filter_str = str(expr.compile(compile_kwargs={"literal_binds": True}))
         return datasets.Dataset(self.table.search().where(filter_str).to_arrow())  # type: ignore[arg-type]
+
+
+def main(
+    items_parquet: str = ITEMS_PARQUET,
+    lancedb_path: str = LANCE_DB_PATH,
+    table_name: str = ITEMS_TABLE_NAME,
+    *,
+    overwrite: bool = True,
+) -> None:
+    dataset = datasets.Dataset.from_parquet(items_parquet).select_columns(
+        ["id", "text"]
+    )
+    logger.info("dataset loaded: {}, shape: {}", items_parquet, dataset.shape)
+
+    config = LanceIndexConfig(lancedb_path=lancedb_path, table_name=table_name)
+    index = LanceIndex(config)
+    index.index_data(dataset, overwrite=overwrite)
+
+    sample_id = dataset.shuffle()[0]["id"]
+    item = index.get_ids([sample_id])
+    logger.info("get_ids result: {}", item.select_columns(["id", "text"])[0])
+
+    text = item["text"][0]
+    results = index.search(text, exclude_ids=[sample_id], top_k=5)
+    logger.info(
+        "search results: {}",
+        results.select_columns(["id", "text", "score"]).to_list(),
+    )
+
+
+if __name__ == "__main__":
+    from jsonargparse import auto_cli
+
+    auto_cli(main, as_positional=False)

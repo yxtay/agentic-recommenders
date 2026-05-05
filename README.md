@@ -48,12 +48,13 @@ uv run data
 
 If you already have `ml-1m.zip`, place it under `data/` before running the command.
 
-### 2. Build the item index
+### 2. Build the LanceDB indexes
 
-Encodes movie titles/genres with sentence-transformers and writes to LanceDB:
+Encodes items and users with sentence-transformers and writes to LanceDB:
 
 ```bash
 uv run index
+uv run index --items_parquet data/ml-1m/users.parquet --table_name users
 ```
 
 ### 3. Configure the LLM

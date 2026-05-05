@@ -2,6 +2,10 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Session start
+
+At the start of every conversation, read `README.md` and `CLAUDE.md` in full before doing anything else. At the end of every conversation, review both files and update any sections that are out of date with changes made during the session.
+
 ## Commands
 
 ```bash
@@ -10,6 +14,10 @@ uv sync
 
 # data preparation (downloads MovieLens 1M, converts to Parquet)
 uv run data
+
+# build LanceDB index for items (default) or users
+uv run index
+uv run index --items_parquet data/ml-1m/users.parquet --table_name users
 
 # serve BentoML endpoint
 uv run bentoml serve agentic_rec.service:RecommenderService
@@ -47,8 +55,8 @@ All Parquet columns are prefixed by entity (`item_id`, `item_text`, `user_id`, `
 
 `LanceIndex` uses `functools.cached_property` for the sentence-transformers embedder, `LanceModel` schema, and answerdotai reranker — each loaded once on first access. Key methods:
 
-- `index_data(dataset, overwrite=False)` — creates the table from a `datasets.Dataset` with `id` and `text` columns; builds scalar index on `id`, FTS index on `text`, and `IVF_HNSW_PQ` vector index. `vector` is auto-embedded if absent.
-- `search(text, exclude_ids, top_k)` — hybrid (vector + FTS) search with answerdotai reranker; `exclude_ids` filter built via `sqlalchemy` (injection safety).
+- `index_data(dataset, overwrite=False)` — creates the table from a `datasets.Dataset` with `id` and `text` columns; builds scalar index on `id`, FTS index on `text`, and `IVF_RQ` vector index. `vector` is auto-embedded if absent.
+- `search(text, exclude_ids, top_k)` — hybrid (vector + FTS) search with answerdotai reranker; `exclude_ids` filter built via `sqlalchemy` (injection safety). Returns a `datasets.Dataset` with columns `id`, `text`, `vector`, `score`.
 - `get_ids(ids)` — scalar-indexed point lookup by ID list.
 - `save(path)` / `load(config)` — copy/open the LanceDB directory.
 

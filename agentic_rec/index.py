@@ -3,123 +3,87 @@ from __future__ import annotations
 import datetime
 import math
 import shutil
-from typing import TYPE_CHECKING, Any, Literal
+from functools import cached_property
+from typing import TYPE_CHECKING, Any
 
 import datasets
-import pyarrow as pa
-import pyarrow.compute as pc
+import lancedb
+import lancedb.table
 import pydantic
 from loguru import logger
+from sqlalchemy import column, literal
 
 from agentic_rec.params import (
-    CROSS_ENCODER_MODEL_NAME,
-    EMBEDDER_MODEL_NAME,
+    EMBEDDER_NAME,
     ITEMS_TABLE_NAME,
     LANCE_DB_PATH,
+    RERANKER_NAME,
 )
 
 if TYPE_CHECKING:
-    import lancedb
-    import numpy as np
+    from lancedb.pydantic import LanceModel
 
 
 class LanceIndexConfig(pydantic.BaseModel):
-    """Configuration for LanceDB index, including paths and text column.
-
-    Attributes:
-        lancedb_path (str): Path to the LanceDB store.
-        table_name (str): Name of the table within the LanceDB store.
-        text_col (str): Name of the column containing text for full-text search.
-    """
-
     lancedb_path: str = LANCE_DB_PATH
     table_name: str = ITEMS_TABLE_NAME
-    embedder_model_name: str = EMBEDDER_MODEL_NAME
-    cross_encoder_model_name: str = CROSS_ENCODER_MODEL_NAME
-
-    id_col: str = "item_id"
-    text_col: str = "item_text"
-    index_metric: Literal["l2", "dot", "cosine"] = "cosine"
-    embedding_col: str = "vector"
+    embedder_name: str = EMBEDDER_NAME
+    embedder_device: str = "cpu"
+    reranker_name: str = RERANKER_NAME
+    reranker_type: str = "cross-encoder"
 
 
 class LanceIndex:
-    """
-    Index implementation using LanceDB for fast vector and text search.
-    """
-
     def __init__(self, config: LanceIndexConfig) -> None:
-        """Initialize LanceIndex with configuration and optional table.
-
-        Args:
-            config (LanceIndexConfig): Configuration specifying paths and
-                column names used by the index.
-        """
         super().__init__()
         self.config = config
         self.table: lancedb.table.Table | None = None
 
+    @cached_property
+    def embedder(self) -> Any:  # noqa: ANN401
+        from lancedb.embeddings import get_registry
+
+        return (
+            get_registry()
+            .get("sentence-transformers")
+            .create(
+                name=self.config.embedder_name,
+                device=self.config.embedder_device,
+            )
+        )
+
+    @cached_property
+    def schema(self) -> type[LanceModel]:
+        from lancedb.pydantic import LanceModel, Vector
+
+        class ItemSchema(LanceModel):
+            id: str
+            text: str = self.embedder.SourceField()
+            vector: Vector(self.embedder.ndims()) = self.embedder.VectorField()  # type: ignore[valid-type]
+
+        return ItemSchema
+
+    @cached_property
+    def reranker(self) -> Any:  # noqa: ANN401
+        from lancedb.rerankers import AnswerdotaiRerankers
+
+        return AnswerdotaiRerankers(
+            model_name=self.config.reranker_name,
+            model_type=self.config.reranker_type,
+        )
+
     def save(self, path: str) -> None:
-        """Copy the underlying LanceDB store to a new path.
-
-        This is a convenience that copies the directory backing the
-        LanceDB instance to ``path`` using ``shutil.copytree``. No
-        validation is performed on the target location.
-
-        Args:
-            path (str): Destination path where the LanceDB store will be
-                copied.
-
-        Returns:
-            None: The function copies files on disk and does not return a value.
-        """
         shutil.copytree(self.config.lancedb_path, path)
 
     @classmethod
     def load(cls, config: LanceIndexConfig) -> LanceIndex:
-        """Load a LanceIndex from disk and infer column names from indices.
+        index = cls(config)
+        index._open_table()
+        return index
 
-        This classmethod opens the LanceDB table configured in ``config``
-        and inspects any indices created on the table to populate the
-        configuration fields ``embedding_col``, ``text_col`` and
-        ``id_col`` when possible.
-
-        Args:
-            config (LanceIndexConfig): Configuration pointing to the
-                LanceDB store to load.
-
-        Returns:
-            LanceIndex: Configured LanceIndex with an opened table.
-        """
-        self = cls(config)
-        self.open_table()
-
-        assert self.table is not None
-        for index in self.table.list_indices():
-            match index.index_type:
-                case "FTS":
-                    self.config.text_col = index.columns[0]
-                case "BTree":
-                    self.config.id_col = index.columns[0]
-                case _:
-                    pass
-        return self
-
-    def open_table(self) -> lancedb.table.Table:
-        """Open and return the LanceDB table specified by the config.
-
-        This method connects to the LanceDB store at ``config.lancedb_path``
-        and opens the table ``config.table_name``. The opened table is
-        stored on the instance as ``self.table``.
-
-        Returns:
-            lancedb.table.Table: Opened LanceDB table object.
-        """
-        import lancedb
-
+    def _open_table(self) -> lancedb.table.Table:
         db = lancedb.connect(self.config.lancedb_path)
         self.table = db.open_table(self.config.table_name)
-
         logger.info(f"{self.__class__.__name__}: {self.table}")
         logger.info(
             f"num_items: {self.table.count_rows()}, columns: {self.table.schema.names}"
@@ -129,74 +93,50 @@ class LanceIndex:
     def index_data(
         self, dataset: datasets.Dataset, *, overwrite: bool = False
     ) -> lancedb.table.Table:
-        """Create and index data in LanceDB from a HuggingFace Dataset.
-
-        The provided dataset is used to create a LanceDB table; scalar
-        and full-text-search (FTS) indices are created for the configured
-        ID and text columns. If an embedding column is configured a
-        vector index (IVF_HNSW_PQ) will be created using heuristics for
-        partitioning and sub-vector size.
-
-        Args:
-            dataset (datasets.Dataset): HuggingFace Dataset containing
-                the data to index.
-            overwrite (bool): If ``True`` an existing table will be
-                replaced. Defaults to ``False``.
-
-        Returns:
-            lancedb.table.Table: The created or existing LanceDB table.
-        """
         if self.table is not None and not overwrite:
             return self.table
 
-        import lancedb
+        import pyarrow as pa
 
-        schema = dataset.data.schema
-        schema = schema.set(
-            # scalar index does not work on large_string
-            schema.get_field_index(self.config.id_col),
-            pa.field(self.config.id_col, pa.string()),
-        )
+        num_items = len(dataset)
+        embedding_dim = self.embedder.ndims()
 
-        if self.config.embedding_col:
-            embedding_dim = len(dataset[self.config.embedding_col][0])
-            schema = schema.set(
-                # embedding column must be fixed size float array
-                schema.get_field_index(self.config.embedding_col),
-                pa.field(
-                    self.config.embedding_col, pa.list_(pa.float32(), embedding_dim)
-                ),
+        # Scalar index requires pa.string(), not large_string
+        arrow_data = dataset.data
+        id_idx = arrow_data.schema.get_field_index("id")
+        if arrow_data.schema.field("id").type != pa.string():
+            arrow_data = arrow_data.cast(
+                arrow_data.schema.set(id_idx, pa.field("id", pa.string()))
             )
 
         db = lancedb.connect(self.config.lancedb_path)
         self.table = db.create_table(
             self.config.table_name,
-            data=dataset.data.to_batches(max_chunksize=1024),
-            schema=schema,
+            data=arrow_data.to_batches(max_chunksize=1024),
+            schema=self.schema,  # type: ignore[arg-type]
             mode="overwrite",
         )
-        self.table.create_scalar_index(self.config.id_col)
-        self.table.create_fts_index(self.config.text_col)
 
-        if self.config.embedding_col:
-            num_items = len(dataset)
-            embedding_dim = len(dataset[self.config.embedding_col][0])
-            # rule of thumb: nlist ~= 4 * sqrt(n_vectors)
-            num_partitions = 2 ** int(math.log2(num_items) / 2)
-            num_sub_vectors = embedding_dim // 8
+        self.table.create_scalar_index("id")
+        self.table.create_fts_index("text")
 
-            self.table.create_index(
-                vector_column_name=self.config.embedding_col,
-                metric=self.config.index_metric,
-                num_partitions=num_partitions,
-                num_sub_vectors=num_sub_vectors,
-                index_type="IVF_HNSW_PQ",
-            )
+        # IVF_HNSW_PQ: rule-of-thumb num_partitions ~= 4 * sqrt(n)
+        num_partitions = 2 ** int(math.log2(num_items) / 2)
+        num_sub_vectors = embedding_dim // 8
+        # PQ codebook: num_bits=8 requires >=256 training rows, num_bits=4 requires >=16
+        num_bits = 8 if num_items >= 256 else 4  # noqa: PLR2004
+        self.table.create_index(
+            vector_column_name="vector",
+            metric="cosine",
+            num_partitions=num_partitions,
+            num_sub_vectors=num_sub_vectors,
+            num_bits=num_bits,
+            index_type="IVF_HNSW_PQ",
+        )
 
         self.table.optimize(
             cleanup_older_than=datetime.timedelta(days=0),
             delete_unverified=True,
-            retrain=True,
         )
 
         logger.info(f"{self.__class__.__name__}: {self.table}")
@@ -207,80 +147,31 @@ class LanceIndex:
 
     def search(
         self,
-        embedding: np.typing.NDArray[np.float32],
-        exclude_item_ids: list[str] | None = None,
+        text: str,
+        exclude_ids: list[str] | None = None,
         top_k: int = 20,
     ) -> datasets.Dataset:
-        """Search the LanceDB vector index for the nearest items.
-
-        The method performs a vector search with optional prefiltering to
-        exclude specific item IDs. Returned results are converted into a
-        HuggingFace ``datasets.Dataset`` and a cosine-like ``score`` is
-        appended (computed as 1 - distance).
-
-        Args:
-            embedding (np.typing.NDArray[np.float32]): Query vector.
-            exclude_item_ids (list[str] | None): Optional list of item
-                IDs to exclude from results.
-            top_k (int): Number of top results to return.
-
-        Returns:
-            datasets.Dataset: Dataset containing the search results with an
-            additional ``score`` column. The ``score`` is computed as
-            ``1 - _distance`` to resemble cosine similarity.
-        """
         assert self.table is not None
-        exclude_item_ids = exclude_item_ids or [""]
-        exclude_filter = ", ".join(
-            f"'{str(item).replace("'", "''")}'" for item in exclude_item_ids
-        )
-        exclude_filter = f"{self.config.id_col} NOT IN ({exclude_filter})"
-        rec_table = (
-            self.table.search(embedding)
-            .where(exclude_filter, prefilter=True)
-            .nprobes(8)
-            .refine_factor(4)
+
+        query = (
+            self.table.search(text, query_type="hybrid")
+            .rerank(self.reranker)
             .limit(top_k)
-            .to_arrow()
         )
-        rec_table = rec_table.append_column(
-            "score", pc.subtract(1, rec_table["_distance"])
-        )
-        return datasets.Dataset(rec_table)
+
+        if exclude_ids:
+            expr = column("id").not_in([literal(v) for v in exclude_ids])
+            filter_str = str(expr.compile(compile_kwargs={"literal_binds": True}))
+            query = query.where(filter_str, prefilter=True)
+
+        return datasets.Dataset(query.to_arrow())  # type: ignore[arg-type]
 
     def get_ids(self, ids: list[str]) -> datasets.Dataset:
-        """Fetch rows from the LanceDB table matching the provided IDs.
-
-        Args:
-            ids (list[str]): List of item identifiers to fetch.
-
-        Returns:
-            datasets.Dataset: Dataset containing the matching rows.
-        """
         assert self.table is not None
-        ids_filter = ", ".join(f"'{str(id_val).replace("'", "''")}'" for id_val in ids)
-        result = (
-            self.table.search()
-            .where(f"{self.config.id_col} IN ({ids_filter})")
-            .to_arrow()
-        )
-        return datasets.Dataset(result)
 
-    def get_id(self, id_val: str | None) -> dict[str, Any]:
-        """Retrieve a single item from LanceDB by its ID.
+        if not ids:
+            return datasets.Dataset(self.table.head(0))
 
-        Args:
-            id_val (str | None): Item ID to fetch. If ``None`` an empty
-                dictionary is returned.
-
-        Returns:
-            dict[str, Any]: The first matching row as a dictionary or an
-            empty dictionary if no match is found.
-        """
-        if id_val is None:
-            return {}
-
-        result = self.get_ids([id_val])
-        if len(result) == 0:
-            return {}
-        return result[0]
+        expr = column("id").in_([literal(v) for v in ids])
+        filter_str = str(expr.compile(compile_kwargs={"literal_binds": True}))
+        return datasets.Dataset(self.table.search().where(filter_str).to_arrow())  # type: ignore[arg-type]

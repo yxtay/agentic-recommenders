@@ -41,6 +41,8 @@ jobs:
 
       - run: uv sync && uv pip list
 
+      - run: uv run pytest
+
       - if: ${{ failure() }}
         run: uv run data
 

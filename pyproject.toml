@@ -5,7 +5,7 @@ build-backend = "poetry.core.masonry.api"
 [project]
 name = "agentic_rec"
 version = "0.1.0"
-description = "Transformer Recommender Models in PyTorch with MovieLens"
+description = "Agentic Recommenders with MovieLens"
 authors = [
   { name = "YuXuan Tay", email = "5795122+yxtay@users.noreply.github.com" },
 ]
@@ -20,7 +20,9 @@ dependencies = [
   "polars[pandas]~=1.40",
   "pydantic-ai~=1.43",
   "pylance~=4.0",
+  "rerankers[transformers]>=0.9",
   "sentence-transformers[onnx,train]~=5.4",
+  "sqlalchemy>=2.0",
   "tensorboard~=2.18",
   "torch~=2.5",
   "pydantic-settings~=2.0",

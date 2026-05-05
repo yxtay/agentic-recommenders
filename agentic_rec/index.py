@@ -7,7 +7,8 @@ from functools import cached_property
 from typing import TYPE_CHECKING, Any
 
 import datasets
-import pyarrow as pa
+import lancedb
+import lancedb.table
 import pydantic
 from loguru import logger
 from sqlalchemy import column, literal
@@ -20,8 +21,6 @@ from agentic_rec.params import (
 )
 
 if TYPE_CHECKING:
-    import lancedb
-    import lancedb.table
     from lancedb.pydantic import LanceModel
 
 
@@ -83,8 +82,6 @@ class LanceIndex:
         return index
 
     def _open_table(self) -> lancedb.table.Table:
-        import lancedb
-
         db = lancedb.connect(self.config.lancedb_path)
         self.table = db.open_table(self.config.table_name)
         logger.info(f"{self.__class__.__name__}: {self.table}")
@@ -99,7 +96,7 @@ class LanceIndex:
         if self.table is not None and not overwrite:
             return self.table
 
-        import lancedb
+        import pyarrow as pa
 
         num_items = len(dataset)
         embedding_dim = self.embedder.ndims()

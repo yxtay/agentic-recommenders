@@ -1,12 +1,18 @@
 # LanceDB Index Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or
+> superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Rewrite `LanceIndex` to use `LanceModel` for automatic embedding, hybrid search with answerdotai reranking, and sqlalchemy-built WHERE clauses for SQL injection safety.
+**Goal:** Rewrite `LanceIndex` to use `LanceModel` for automatic embedding, hybrid search with answerdotai
+reranking, and sqlalchemy-built WHERE clauses for SQL injection safety.
 
-**Architecture:** `LanceIndexConfig` holds tunable parameters (paths, model names). `LanceIndex` wraps a LanceDB table; it lazily loads the embedder, schema, and reranker on first use. `index_data` creates the table and all three index types; `search` runs hybrid (vector + FTS) search and reranks results; `get_ids` does scalar-indexed point lookups.
+**Architecture:** `LanceIndexConfig` holds tunable parameters (paths, model names). `LanceIndex` wraps a
+LanceDB table; it lazily loads the embedder, schema, and reranker on first use. `index_data` creates the
+table and all three index types; `search` runs hybrid (vector + FTS) search and reranks results; `get_ids`
+does scalar-indexed point lookups.
 
-**Tech Stack:** lancedb 0.30, sentence-transformers (via lancedb registry), answerdotai `rerankers`, sqlalchemy (filter string generation), HuggingFace `datasets`, pydantic.
+**Tech Stack:** lancedb 0.30, sentence-transformers (via lancedb registry), answerdotai `rerankers`,
+sqlalchemy (filter string generation), HuggingFace `datasets`, pydantic.
 
 ---
 

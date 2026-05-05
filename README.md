@@ -1,15 +1,21 @@
 # agentic-recommenders
 
-Implementation of [ARAG: Agentic Retrieval Augmented Generation for Personalized Recommendation](https://arxiv.org/abs/2506.21931) on the MovieLens 1M dataset.
+Implementation of
+[ARAG: Agentic Retrieval Augmented Generation for Personalized Recommendation](https://arxiv.org/abs/2506.21931)
+on the MovieLens 1M dataset.
 
 ## Overview
 
-ARAG replaces static retrieval heuristics with an LLM agent that reasons about user preferences and item relevance. A single `pydantic-ai` agent receives a list of past interactions and works in three stages:
+ARAG replaces static retrieval heuristics with an LLM agent that reasons about user preferences and item relevance.
+A single `pydantic-ai` agent receives a list of past interactions and works in three stages:
 
 1. **Item text lookup** — fetches the text of interacted items from LanceDB by ID
-2. **Context understanding** — LLM builds a preference summary from interaction history and item texts, emphasising recent events
-3. **Candidate retrieval** — agent issues multiple hybrid-search queries (using recent item texts and/or a generated hypothetical item description) for diversity; interacted items are excluded
-4. **Ranking with explanations** — LLM ranks candidates by relevance and diversity, attaching a one-sentence explanation to each recommendation
+2. **Context understanding** — LLM builds a preference summary from interaction history and item texts,
+    emphasising recent events
+3. **Candidate retrieval** — agent issues multiple hybrid-search queries (using recent item texts and/or
+    a generated hypothetical item description) for diversity; interacted items are excluded
+4. **Ranking with explanations** — LLM ranks candidates by relevance and diversity, attaching a
+    one-sentence explanation to each recommendation
 
 The system is served via a BentoML REST endpoint.
 
@@ -64,7 +70,8 @@ export LLM_MODEL="openai:gpt-4o"   # any pydantic-ai model string
 export OPENAI_API_KEY="sk-..."
 ```
 
-Supported model strings: `openai:gpt-4o`, `anthropic:claude-haiku-4-5`, `ollama:llama3`, and any other [pydantic-ai provider](https://ai.pydantic.dev/models/).
+Supported model strings: `openai:gpt-4o`, `anthropic:claude-haiku-4-5`, `ollama:llama3`, and any other
+[pydantic-ai provider](https://ai.pydantic.dev/models/).
 
 ### 4. Serve
 

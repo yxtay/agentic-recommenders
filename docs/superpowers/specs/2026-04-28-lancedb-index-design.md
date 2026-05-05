@@ -7,7 +7,8 @@
 
 ## Overview
 
-Rewrite `LanceIndex` to use `LanceModel` for automatic embedding via lancedb's registry, hybrid search with answerdotai reranking, and sqlalchemy-built filters for SQL injection safety.
+Rewrite `LanceIndex` to use `LanceModel` for automatic embedding via lancedb's registry, hybrid search with
+answerdotai reranking, and sqlalchemy-built filters for SQL injection safety.
 
 ---
 
@@ -27,7 +28,8 @@ class LanceIndexConfig(pydantic.BaseModel):
 
 ## `ItemSchema` (LanceModel)
 
-Built at runtime via `_build_schema()`, using a normal class definition inside the factory to capture `embedder` via closure:
+Built at runtime via `_build_schema()`, using a normal class definition inside the factory to capture
+`embedder` via closure:
 
 ```python
 def _build_schema(self) -> type[LanceModel]:
@@ -44,12 +46,14 @@ def _build_schema(self) -> type[LanceModel]:
     return ItemSchema
 ```
 
-Field names (`id`, `text`, `vector`) are hardcoded. The schema registers the sentence-transformers embedding function in lancedb's registry, so:
+Field names (`id`, `text`, `vector`) are hardcoded. The schema registers the sentence-transformers embedding
+function in lancedb's registry, so:
 
 - Any row missing `vector` at index time gets it auto-computed from `text`.
 - At query time, a text string passed to `.search()` is auto-embedded.
 
-No `ID_COL`/`TEXT_COL`/`EMBEDDING_COL` constants needed. Filter expressions in `search` and `get_ids` use the string literals `"id"` and `"text"` directly.
+No `ID_COL`/`TEXT_COL`/`EMBEDDING_COL` constants needed. Filter expressions in `search` and `get_ids` use
+the string literals `"id"` and `"text"` directly.
 
 ---
 
@@ -58,12 +62,14 @@ No `ID_COL`/`TEXT_COL`/`EMBEDDING_COL` constants needed. Filter expressions in `
 ### Lazy-loaded properties
 
 - `_schema`: built once via `_build_schema()` (loads embedder model on first call)
-- `_reranker`: built once via `Reranker(config.reranker_name, model_type=config.reranker_type)` from answerdotai `rerankers`
+- `_reranker`: built once via `Reranker(config.reranker_name, model_type=config.reranker_type)` from
+  answerdotai `rerankers`
 - `table`: `lancedb.table.Table | None`, set by `open_table()` or `index_data()`
 
 ### `index_data(dataset, overwrite)`
 
-Input: `datasets.Dataset` with at least `id` (str) and `text` (str) columns. `vector` column is optional — auto-generated if absent.
+Input: `datasets.Dataset` with at least `id` (str) and `text` (str) columns. `vector` column is optional —
+auto-generated if absent.
 
 Steps:
 
@@ -114,7 +120,8 @@ Steps:
     result = query.to_arrow()
     ```
 
-    lancedb auto-embeds `text` for the vector leg, runs FTS in parallel, then passes both ranked lists to the answerdotai reranker's `rerank_hybrid()` method.
+    lancedb auto-embeds `text` for the vector leg, runs FTS in parallel, then passes both ranked lists to
+    the answerdotai reranker's `rerank_hybrid()` method.
 
 3. Return `datasets.Dataset(result_table)`.
 
@@ -138,13 +145,16 @@ Uses the scalar index for fast point lookups.
 
 ### `load(cls, config)` (classmethod)
 
-Opens the existing table at `config.lancedb_path` / `config.table_name`. No index inference needed — column names are fixed constants.
+Opens the existing table at `config.lancedb_path` / `config.table_name`. No index inference needed —
+column names are fixed constants.
 
 ---
 
 ## SQL Injection Safety
 
-All lancedb `.where()` filter strings are built via sqlalchemy Core expressions with `literal_binds=True` compilation. This escapes string values rather than interpolating them directly, preventing SQL injection through item IDs.
+All lancedb `.where()` filter strings are built via sqlalchemy Core expressions with `literal_binds=True`
+compilation. This escapes string values rather than interpolating them directly, preventing SQL injection
+through item IDs.
 
 ---
 

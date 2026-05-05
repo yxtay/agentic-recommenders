@@ -1,14 +1,18 @@
 # ARAG: Agentic Retrieval Augmented Generation for MovieLens
 
 **Date:** 2026-04-28
-**Paper:** [ARAG: Agentic Retrieval Augmented Generation for Personalized Recommendation](https://arxiv.org/abs/2506.21931)
+**Paper:**
+[ARAG: Agentic Retrieval Augmented Generation for Personalized Recommendation](https://arxiv.org/abs/2506.21931)
 **Stack:** pydantic-ai, lancedb, sentence-transformers, datasets, BentoML, Polars
 
 ---
 
 ## Overview
 
-Implementation of the ARAG framework on MovieLens 1M. A single `pydantic-ai` `Agent` orchestrates recommendation via two tools: item text lookup (by ID) and candidate retrieval (hybrid search). The agent derives a preference summary from the user's interaction history, issues multiple targeted retrieval queries for diversity, then ranks candidates with per-item explanations.
+Implementation of the ARAG framework on MovieLens 1M. A single `pydantic-ai` `Agent` orchestrates
+recommendation via two tools: item text lookup (by ID) and candidate retrieval (hybrid search). The agent
+derives a preference summary from the user's interaction history, issues multiple targeted retrieval queries
+for diversity, then ranks candidates with per-item explanations.
 
 ---
 
@@ -63,7 +67,8 @@ Interactions are sorted by `event_timestamp` descending before being passed to t
 
 ### Context understanding (between Tool 1 and Tool 2)
 
-No tool call — the agent LLM reasons over the fetched item texts and interaction metadata to produce a preference summary string. The summary should:
+No tool call — the agent LLM reasons over the fetched item texts and interaction metadata to produce a
+preference summary string. The summary should:
 
 - Weight recent interactions more heavily than older ones.
 - Distinguish between strong signals (high rating, explicit like) and weak signals.
@@ -71,7 +76,8 @@ No tool call — the agent LLM reasons over the fetched item texts and interacti
 
 ### Item candidates (Tool 2)
 
-LanceDB `items` table rows: `id`, `text`, `vector`. Hybrid search combines vector similarity and BM25/FTS, reranked via `answerdotai/rerankers`.
+LanceDB `items` table rows: `id`, `text`, `vector`. Hybrid search combines vector similarity and BM25/FTS,
+reranked via `answerdotai/rerankers`.
 
 The agent may call `retrieve_candidates` multiple times:
 
@@ -80,13 +86,15 @@ The agent may call `retrieve_candidates` multiple times:
 | Item text of a recent, high-value interaction               | Fast, anchored signal           |
 | Generated hypothetical item text from context understanding | When history is sparse or stale |
 
-The agent should limit `top_k` per call (e.g. 20) and issue 2–4 calls to ensure diversity. Candidates are deduplicated by `item_id` across calls, keeping the highest retrieval score.
+The agent should limit `top_k` per call (e.g. 20) and issue 2–4 calls to ensure diversity. Candidates are
+deduplicated by `item_id` across calls, keeping the highest retrieval score.
 
 All interacted `item_id`s are passed as `exclude_item_ids` on every call.
 
 ### Ranking and explanation
 
-No tool call — the agent LLM reasons over the deduplicated candidate list and context understanding to produce the final ranked output. The ranking should:
+No tool call — the agent LLM reasons over the deduplicated candidate list and context understanding to
+produce the final ranked output. The ranking should:
 
 - Prefer candidates that align with the preference summary.
 - Penalise adjacent items that are too similar (genre/style diversity).
@@ -136,7 +144,9 @@ class RecommendResponse(pydantic.BaseModel):
 
 ## LLM Configuration
 
-The agent is constructed with `model=settings.llm_model` where `settings` is a `pydantic-settings` `Settings` object reading from environment variables. Default: `"openai:gpt-4o"`. Any pydantic-ai–supported model string works (e.g. `"anthropic:claude-haiku-4-5"`, `"ollama:llama3"`).
+The agent is constructed with `model=settings.llm_model` where `settings` is a `pydantic-settings` `Settings`
+object reading from environment variables. Default: `"openai:gpt-4o"`. Any pydantic-ai–supported model string
+works (e.g. `"anthropic:claude-haiku-4-5"`, `"ollama:llama3"`).
 
 ```bash
 export LLM_MODEL="openai:gpt-4o"
@@ -168,16 +178,23 @@ Before serving, items must be embedded and indexed into LanceDB:
 uv run index   # CLI entry point in pyproject.toml
 ```
 
-This loads `data/ml-1m/items.parquet`, encodes `item_text` with sentence-transformers (`all-MiniLM-L6-v2`), and calls `LanceIndex.index_data()`.
+This loads `data/ml-1m/items.parquet`, encodes `item_text` with sentence-transformers (`all-MiniLM-L6-v2`),
+and calls `LanceIndex.index_data()`.
 
 ---
 
 ## Key Design Decisions
 
-- **Two tools, not five**: removes NLI scoring and context summarisation as separate tool calls. Context understanding and ranking are agent reasoning steps, not tool calls, which reduces latency and round-trips.
-- **Input is interactions, not user_id**: caller supplies the interaction list directly; no server-side user profile store is required.
-- **Multi-query retrieval for diversity**: agent issues 2–4 hybrid search calls with different query strategies rather than a single large retrieval. Deduplication happens client-side.
-- **Hypothetical item text**: when recent history alone is a poor query signal, the agent generates a synthetic item description matching the schema of real items, then uses it as the search query.
-- **Per-item explanations in output**: `RankedItem.explanation` makes recommendations interpretable and testable without a separate evaluation pipeline.
+- **Two tools, not five**: removes NLI scoring and context summarisation as separate tool calls. Context
+  understanding and ranking are agent reasoning steps, not tool calls, which reduces latency and round-trips.
+- **Input is interactions, not user_id**: caller supplies the interaction list directly; no server-side user
+  profile store is required.
+- **Multi-query retrieval for diversity**: agent issues 2–4 hybrid search calls with different query strategies
+  rather than a single large retrieval. Deduplication happens client-side.
+- **Hypothetical item text**: when recent history alone is a poor query signal, the agent generates a synthetic
+  item description matching the schema of real items, then uses it as the search query.
+- **Per-item explanations in output**: `RankedItem.explanation` makes recommendations interpretable and
+  testable without a separate evaluation pipeline.
 - **No evaluation in v1**: NDCG@5 / Hit@5 measurement deferred; pipeline first.
-- **MovieLens 1M**: item context is title + genres (no reviews). Less rich than Amazon Reviews but the existing data pipeline is reused without changes.
+- **MovieLens 1M**: item context is title + genres (no reviews). Less rich than Amazon Reviews but the existing
+  data pipeline is reused without changes.

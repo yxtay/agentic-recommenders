@@ -54,7 +54,7 @@ Encodes items and users with sentence-transformers and writes to LanceDB:
 
 ```bash
 uv run index
-uv run index --items_parquet data/ml-1m/users.parquet --table_name users
+uv run index --parquet_path data/ml-1m/users.parquet --table_name users
 ```
 
 ### 3. Configure the LLM

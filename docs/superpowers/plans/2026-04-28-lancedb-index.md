@@ -12,12 +12,12 @@
 
 ## File Map
 
-| File | Change |
-|---|---|
-| `pyproject.toml` | Add `rerankers`, `sqlalchemy` to `[project.dependencies]` |
+| File                   | Change                                                                       |
+|------------------------|------------------------------------------------------------------------------|
+| `pyproject.toml`       | Add `rerankers`, `sqlalchemy` to `[project.dependencies]`                    |
 | `agentic_rec/index.py` | Full rewrite — new config fields, LanceModel schema, hybrid search, reranker |
-| `tests/__init__.py` | Create (empty) |
-| `tests/test_index.py` | Create — unit + integration tests |
+| `tests/__init__.py`    | Create (empty)                                                               |
+| `tests/test_index.py`  | Create — unit + integration tests                                            |
 
 ---
 

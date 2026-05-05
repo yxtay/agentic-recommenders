@@ -32,7 +32,7 @@ ARAG (Agentic Retrieval-Augmented Generation) for MovieLens 1M. A single `pydant
 ### Modules
 
 | File                     | Responsibility                                               |
-| ------------------------ | ------------------------------------------------------------ |
+|--------------------------|--------------------------------------------------------------|
 | `agentic_rec/params.py`  | All constants: paths, model names, table names               |
 | `agentic_rec/data.py`    | MovieLens download, Parquet conversion, train/val/test split |
 | `agentic_rec/index.py`   | LanceDB item index: embedding, hybrid search, reranking      |

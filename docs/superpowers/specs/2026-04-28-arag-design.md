@@ -52,12 +52,12 @@ BentoML /recommend → RecommendResponse(items: list[RankedItem])
 
 The caller supplies a list of past interactions; no user profile lookup is needed:
 
-| Field             | Type     | Description                            |
-|-------------------|----------|----------------------------------------|
-| `item_id`         | `str`    | Interacted item                        |
-| `event_timestamp` | `datetime` | When the interaction occurred        |
-| `event_name`      | `str`    | Interaction type (e.g. `"rating"`)     |
-| `event_value`     | `float`  | Strength of interaction (e.g. 1–5 rating) |
+| Field             | Type       | Description                               |
+|-------------------|------------|-------------------------------------------|
+| `item_id`         | `str`      | Interacted item                           |
+| `event_timestamp` | `datetime` | When the interaction occurred             |
+| `event_name`      | `str`      | Interaction type (e.g. `"rating"`)        |
+| `event_value`     | `float`    | Strength of interaction (e.g. 1–5 rating) |
 
 Interactions are sorted by `event_timestamp` descending before being passed to the agent so that recency is preserved.
 
@@ -75,9 +75,9 @@ LanceDB `items` table rows: `id`, `text`, `vector`. Hybrid search combines vecto
 
 The agent may call `retrieve_candidates` multiple times:
 
-| Query strategy | When to use |
-|---|---|
-| Item text of a recent, high-value interaction | Fast, anchored signal |
+| Query strategy                                              | When to use                     |
+|-------------------------------------------------------------|---------------------------------|
+| Item text of a recent, high-value interaction               | Fast, anchored signal           |
 | Generated hypothetical item text from context understanding | When history is sparse or stale |
 
 The agent should limit `top_k` per call (e.g. 20) and issue 2–4 calls to ensure diversity. Candidates are deduplicated by `item_id` across calls, keeping the highest retrieval score.
@@ -123,12 +123,12 @@ class RecommendResponse(pydantic.BaseModel):
 
 ## Modules
 
-| File                     | Responsibility                                                                    |
-|--------------------------|-----------------------------------------------------------------------------------|
-| `agentic_rec/agent.py`   | `Agent` definition, system prompt, two tools, pydantic result types               |
-| `agentic_rec/index.py`   | `LanceIndex` with `get_ids` (for Tool 1) and `search` hybrid (for Tool 2)         |
-| `agentic_rec/service.py` | BentoML `Service` wrapping the agent; `/recommend` POST endpoint                  |
-| `agentic_rec/params.py`  | `LLM_MODEL` constant (default `"openai:gpt-4o"`)                                  |
+| File                     | Responsibility                                                            |
+|--------------------------|---------------------------------------------------------------------------|
+| `agentic_rec/agent.py`   | `Agent` definition, system prompt, two tools, pydantic result types       |
+| `agentic_rec/index.py`   | `LanceIndex` with `get_ids` (for Tool 1) and `search` hybrid (for Tool 2) |
+| `agentic_rec/service.py` | BentoML `Service` wrapping the agent; `/recommend` POST endpoint          |
+| `agentic_rec/params.py`  | `LLM_MODEL` constant (default `"openai:gpt-4o"`)                          |
 
 `data.py` is unchanged. `NLI_THRESHOLD` is no longer needed.
 

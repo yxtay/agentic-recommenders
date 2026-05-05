@@ -151,7 +151,7 @@ All lancedb `.where()` filter strings are built via sqlalchemy Core expressions 
 ## Dependencies to Add
 
 | Package                   | Reason                                            |
-| ------------------------- | ------------------------------------------------- |
+|---------------------------|---------------------------------------------------|
 | `rerankers` (answerdotai) | answerdotai reranker with `rerank_hybrid` support |
 | `sqlalchemy`              | explicit pin (currently transitive via mlflow)    |
 

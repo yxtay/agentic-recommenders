@@ -6,9 +6,11 @@ import shutil
 from functools import cached_property
 from typing import TYPE_CHECKING, Any
 
+import datasets
 import pyarrow as pa
 import pydantic
 from loguru import logger
+from sqlalchemy import column, literal
 
 from agentic_rec.params import (
     EMBEDDER_NAME,
@@ -18,7 +20,6 @@ from agentic_rec.params import (
 )
 
 if TYPE_CHECKING:
-    import datasets
     import lancedb
     import lancedb.table
     from lancedb.pydantic import LanceModel
@@ -154,8 +155,6 @@ class LanceIndex:
         top_k: int = 20,
     ) -> datasets.Dataset:
         assert self.table is not None
-        import datasets
-        from sqlalchemy import column, literal
 
         query = (
             self.table.search(text, query_type="hybrid")
@@ -172,8 +171,9 @@ class LanceIndex:
 
     def get_ids(self, ids: list[str]) -> datasets.Dataset:
         assert self.table is not None
-        import datasets
-        from sqlalchemy import column, literal
+
+        if not ids:
+            return datasets.Dataset(self.table.head(0))
 
         expr = column("id").in_([literal(v) for v in ids])
         filter_str = str(expr.compile(compile_kwargs={"literal_binds": True}))

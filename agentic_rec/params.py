@@ -9,7 +9,8 @@ EVENTS_PARQUET = "data/ml-1m/events.parquet"
 
 # model
 EMBEDDER_NAME = "sentence-transformers/all-MiniLM-L6-v2"
-RERANKER_NAME = "cross-encoder/ms-marco-MiniLM-L-6-v2"
+RERANKER_NAME = "mixedbread-ai/mxbai-edge-colbert-v0-32m"
+RERANKER_TYPE = "colbert"
 
 ITEMS_TABLE_NAME = "items"
 LANCE_DB_PATH = "lance_db"

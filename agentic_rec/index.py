@@ -19,6 +19,7 @@ from agentic_rec.params import (
     ITEMS_TABLE_NAME,
     LANCE_DB_PATH,
     RERANKER_NAME,
+    RERANKER_TYPE,
 )
 
 if TYPE_CHECKING:
@@ -31,7 +32,7 @@ class LanceIndexConfig(pydantic.BaseModel):
     embedder_name: str = EMBEDDER_NAME
     embedder_device: str = "cpu"
     reranker_name: str = RERANKER_NAME
-    reranker_type: str = "cross-encoder"
+    reranker_type: str = RERANKER_TYPE
 
 
 class LanceIndex:

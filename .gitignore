@@ -209,4 +209,5 @@ __marimo__/
 /data
 /lance_db
 
+data.lock
 settings.local.json

@@ -8,9 +8,9 @@ USERS_PARQUET = "data/ml-1m/users.parquet"
 EVENTS_PARQUET = "data/ml-1m/events.parquet"
 
 # model
-EMBEDDER_NAME = "ibm-granite/granite-embedding-97m-multilingual-r2"
-RERANKER_NAME = "answerdotai/answerai-colbert-small-v1"
-RERANKER_TYPE = "colbert"
+EMBEDDER_NAME = "lightonai/DenseOn"
+RERANKER_NAME = "Alibaba-NLP/gte-reranker-modernbert-base"
+RERANKER_TYPE = "cross-encoder"
 
 ITEMS_TABLE_NAME = "items"
 LANCE_DB_PATH = "lance_db"

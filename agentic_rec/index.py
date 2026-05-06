@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import datetime
+import math
 import shutil
 from functools import cached_property
 from typing import TYPE_CHECKING, Any
@@ -119,10 +120,12 @@ class LanceIndex:
         self.table.create_scalar_index("id")
         self.table.create_fts_index("text")
 
+        num_partitions = 2 ** int(math.log2(len(dataset)) / 2)
         self.table.create_index(
             vector_column_name="vector",
             metric="cosine",
             index_type="IVF_RQ",
+            num_partitions=num_partitions,
         )
 
         self.table.optimize(

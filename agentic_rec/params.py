@@ -9,7 +9,7 @@ EVENTS_PARQUET = "data/ml-1m/events.parquet"
 
 # model
 EMBEDDER_NAME = "ibm-granite/granite-embedding-97m-multilingual-r2"
-RERANKER_NAME = "mixedbread-ai/mxbai-edge-colbert-v0-32m"
+RERANKER_NAME = "answerdotai/answerai-colbert-small-v1"
 RERANKER_TYPE = "colbert"
 
 ITEMS_TABLE_NAME = "items"

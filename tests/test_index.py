@@ -12,6 +12,7 @@ from agentic_rec.params import (
     ITEMS_TABLE_NAME,
     LANCE_DB_PATH,
     RERANKER_NAME,
+    RERANKER_TYPE,
 )
 
 
@@ -23,7 +24,7 @@ class TestLanceIndexConfig:
         assert config.embedder_name == EMBEDDER_NAME
         assert config.embedder_device == "cpu"
         assert config.reranker_name == RERANKER_NAME
-        assert config.reranker_type == "cross-encoder"
+        assert config.reranker_type == RERANKER_TYPE
 
     def test_custom_values(self, tmp_path: str) -> None:
         config = LanceIndexConfig(lancedb_path=str(tmp_path))

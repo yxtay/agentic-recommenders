@@ -63,6 +63,7 @@ dependencies = [
     { name = "pydantic-ai" },
     { name = "pydantic-settings" },
     { name = "rerankers", extra = ["pylate", "transformers"] },
+    { name = "sentence-transformers" },
     { name = "sqlalchemy" },
 ]
 
@@ -84,6 +85,7 @@ requires-dist = [
     { name = "pydantic-ai", specifier = "~=1.43" },
     { name = "pydantic-settings", specifier = "~=2.0" },
     { name = "rerankers", extras = ["pylate", "transformers"], specifier = ">=0.9,<1.0" },
+    { name = "sentence-transformers", specifier = "~=5.3" },
     { name = "sqlalchemy", specifier = "~=2.0" },
 ]
 

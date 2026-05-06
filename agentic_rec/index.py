@@ -120,7 +120,6 @@ class LanceIndex:
         self.table.create_scalar_index("id")
         self.table.create_fts_index("text")
 
-        # rule of thumb: nlist ~= 4 * sqrt(n_vectors)
         num_partitions = 2 ** int(math.log2(len(dataset)) / 2)
         self.table.create_index(
             vector_column_name="vector",

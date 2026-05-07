@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import datetime  # noqa: TC003
 from typing import TYPE_CHECKING
 
 import pydantic
 import pydantic_ai
 from pydantic_ai import RunContext
+
+from agentic_rec.params import LLM_MODEL
 
 if TYPE_CHECKING:
     from agentic_rec.index import LanceIndex
@@ -40,8 +43,25 @@ class RecommendResponse(pydantic.BaseModel):
     items: list[RankedItem]
 
 
-SYSTEM_PROMPT = """\
-You are a personalized movie recommender. Your job is to recommend {top_k} movies that the user will enjoy.
+@dataclass
+class AgentDeps:
+    index: LanceIndex
+    request: RecommendRequest
+
+
+agent: pydantic_ai.Agent[AgentDeps, RecommendResponse] = pydantic_ai.Agent(
+    model=LLM_MODEL,
+    output_type=RecommendResponse,
+    defer_model_check=True,
+)
+
+
+@agent.system_prompt
+def system_prompt(ctx: RunContext[AgentDeps]) -> str:
+    top_k = ctx.deps.request.top_k
+    return f"""\
+You are a personalized movie recommender. Your job is to recommend {top_k} movies \
+that the user will enjoy.
 
 Workflow:
 
@@ -66,77 +86,36 @@ Return a RecommendResponse with the ranked list of items.
 """
 
 
-def create_agent(
-    index: LanceIndex, top_k: int = 10
-) -> pydantic_ai.Agent[None, RecommendResponse]:
-    """Create a pydantic-ai agent with item lookup and search tools bound to *index*.
-
-    Args:
-        index: The LanceDB index for item lookup and search.
-        top_k: Number of items to recommend; embedded into the system prompt.
-    """
-    from agentic_rec.params import LLM_MODEL
-
-    agent: pydantic_ai.Agent[None, RecommendResponse] = pydantic_ai.Agent(
-        model=LLM_MODEL,
-        system_prompt=SYSTEM_PROMPT.format(top_k=top_k),
-        output_type=RecommendResponse,
-        defer_model_check=True,
-    )
-
-    @agent.tool
-    def get_item_texts(
-        ctx: RunContext[None],  # noqa: ARG001
-        item_ids: list[str],
-    ) -> dict[str, str]:
-        """Look up item texts for the given item IDs.
-
-        Args:
-            ctx: The run context.
-            item_ids: List of item IDs to look up.
-        """
-        dataset = index.get_ids(item_ids)
-        return {row["id"]: row["text"] for row in dataset}
-
-    @agent.tool
-    def search_items(
-        ctx: RunContext[None],  # noqa: ARG001
-        query: str,
-        exclude_ids: list[str] | None = None,
-        top_k: int = 20,
-    ) -> list[ItemCandidate]:
-        """Search for items matching the query using hybrid vector + full-text search.
-
-        Args:
-            ctx: The run context.
-            query: The search query string describing desired items.
-            exclude_ids: Item IDs to exclude from results (e.g. already-interacted items).
-            top_k: Maximum number of candidates to return.
-        """
-        dataset = index.search(query, exclude_ids=exclude_ids, top_k=top_k)
-        return [
-            ItemCandidate(item_id=row["id"], item_text=row["text"], score=row["score"])
-            for row in dataset
-        ]
-
-    return agent
+@agent.tool
+def get_item_texts(
+    ctx: RunContext[AgentDeps],
+    item_ids: list[str],
+) -> dict[str, str]:
+    """Look up item texts for the given item IDs."""
+    dataset = ctx.deps.index.get_ids(item_ids)
+    return {row["id"]: row["text"] for row in dataset}
 
 
-async def recommend(request: RecommendRequest, index: LanceIndex) -> RecommendResponse:
-    """Run the recommendation agent and return ranked items.
+@agent.tool
+def search_items(
+    ctx: RunContext[AgentDeps],
+    query: str,
+    exclude_ids: list[str] | None = None,
+    top_k: int = 20,
+) -> list[ItemCandidate]:
+    """Search for items matching the query using hybrid vector + full-text search."""
+    dataset = ctx.deps.index.search(query, exclude_ids=exclude_ids, top_k=top_k)
+    return [
+        ItemCandidate(item_id=row["id"], item_text=row["text"], score=row["score"])
+        for row in dataset
+    ]
 
-    Args:
-        request: The recommendation request with user_text, history, and top_k.
-        index: The LanceDB index for item lookup and search.
-    """
-    agent = create_agent(index, top_k=request.top_k)
 
-    # Sort history by event_timestamp descending (most recent first)
+def _build_user_message(request: RecommendRequest) -> str:
     sorted_history = sorted(
         request.history, key=lambda i: i.event_timestamp, reverse=True
     )
 
-    # Build the user message
     lines: list[str] = [f"User profile: {request.user_text}", ""]
 
     if sorted_history:
@@ -153,8 +132,11 @@ async def recommend(request: RecommendRequest, index: LanceIndex) -> RecommendRe
 
     lines.append("")
     lines.append(f"Please recommend {request.top_k} items.")
+    return "\n".join(lines)
 
-    user_message = "\n".join(lines)
 
-    result = await agent.run(user_message)
+async def recommend(request: RecommendRequest, index: LanceIndex) -> RecommendResponse:
+    """Run the recommendation agent and return ranked items."""
+    deps = AgentDeps(index=index, request=request)
+    result = await agent.run(_build_user_message(request), deps=deps)
     return result.output

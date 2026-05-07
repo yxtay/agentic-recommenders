@@ -84,31 +84,8 @@ agent: pydantic_ai.Agent[AgentDeps, RecommendResponse] = pydantic_ai.Agent(
 
 @agent.instructions
 def user_context(ctx: RunContext[AgentDeps]) -> str:
-    """Build per-request instructions from user profile and history."""
-    request = ctx.deps.request
-    sorted_history = sorted(
-        request.history, key=lambda i: i.event_timestamp, reverse=True
-    )
-
-    lines: list[str] = [
-        f"User profile: {request.user_text}",
-        f"Number of recommendations requested: {request.top_k}",
-        "",
-    ]
-
-    if sorted_history:
-        lines.append("Interaction history (most recent first):")
-        lines.extend(
-            f"  - item_id={interaction.item_id}"
-            f", event={interaction.event_name}"
-            f", value={interaction.event_value}"
-            f", timestamp={interaction.event_timestamp.isoformat()}"
-            for interaction in sorted_history
-        )
-    else:
-        lines.append("No interaction history (cold-start).")
-
-    return "\n".join(lines)
+    """Serialize the request as JSON for the agent to interpret."""
+    return ctx.deps.request.model_dump_json()
 
 
 @agent.tool

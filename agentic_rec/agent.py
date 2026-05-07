@@ -8,7 +8,7 @@ import pydantic
 import pydantic_ai
 from pydantic_ai import RunContext
 
-from agentic_rec.params import LLM_MODEL
+from agentic_rec.params import LLM_MODEL, USERS_PARQUET
 
 if TYPE_CHECKING:
     from agentic_rec.index import LanceIndex
@@ -127,21 +127,45 @@ async def recommend(request: RecommendRequest, index: LanceIndex) -> RecommendRe
 
 
 def main(
-    user_text: str = "25-year-old male, software engineer, enjoys sci-fi and thriller films",
+    parquet_path: str = USERS_PARQUET,
     top_k: int = 5,
 ) -> None:
-    """Sanity check: run a cold-start recommendation and print results."""
+    """Sanity check: sample a user from parquet and run recommendation."""
     import asyncio
 
+    import datasets
     from loguru import logger
 
     import agentic_rec.index
     from agentic_rec.index import LanceIndex, LanceIndexConfig
 
     agentic_rec.index.main(overwrite=False)
+
+    user_dataset = datasets.Dataset.from_parquet(parquet_path)
+    user = user_dataset.shuffle()[0]
+    logger.info("sampled user: id={}, text={}", user["id"], user["text"])
+
+    history = [
+        Interaction(
+            item_id=item_id,
+            event_timestamp=event_dt,
+            event_name=event_name,
+            event_value=event_value,
+        )
+        for item_id, event_dt, event_name, event_value in zip(
+            user["history"]["item_id"],
+            user["history"]["event_datetime"],
+            user["history"]["event_name"],
+            user["history"]["event_value"],
+            strict=True,
+        )
+    ]
+
     index = LanceIndex.load(LanceIndexConfig())
-    request = RecommendRequest(user_text=user_text, top_k=top_k)
-    logger.info("request: {}", request.model_dump_json())
+    request = RecommendRequest(user_text=user["text"], history=history, top_k=top_k)
+    logger.info(
+        "request: {} interactions, top_k={}", len(request.history), request.top_k
+    )
 
     response = asyncio.run(recommend(request, index))
     for i, item in enumerate(response.items, 1):

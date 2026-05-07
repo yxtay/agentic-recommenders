@@ -124,3 +124,29 @@ async def recommend(request: RecommendRequest, index: LanceIndex) -> RecommendRe
     deps = AgentDeps(index=index, request=request)
     result = await agent.run(deps=deps)
     return result.output
+
+
+def main(
+    user_text: str = "25-year-old male, software engineer, enjoys sci-fi and thriller films",
+    top_k: int = 5,
+) -> None:
+    """Sanity check: run a cold-start recommendation and print results."""
+    import asyncio
+
+    from loguru import logger
+
+    from agentic_rec.index import LanceIndex, LanceIndexConfig
+
+    index = LanceIndex.load(LanceIndexConfig())
+    request = RecommendRequest(user_text=user_text, top_k=top_k)
+    logger.info("request: {}", request.model_dump_json())
+
+    response = asyncio.run(recommend(request, index))
+    for i, item in enumerate(response.items, 1):
+        logger.info("{}. {} — {}", i, item.item_text, item.explanation)
+
+
+if __name__ == "__main__":
+    from jsonargparse import auto_cli
+
+    auto_cli(main, as_positional=False)

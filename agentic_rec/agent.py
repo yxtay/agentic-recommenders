@@ -135,8 +135,10 @@ def main(
 
     from loguru import logger
 
+    import agentic_rec.index
     from agentic_rec.index import LanceIndex, LanceIndexConfig
 
+    agentic_rec.index.main(overwrite=False)
     index = LanceIndex.load(LanceIndexConfig())
     request = RecommendRequest(user_text=user_text, top_k=top_k)
     logger.info("request: {}", request.model_dump_json())

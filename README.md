@@ -7,7 +7,8 @@ on the MovieLens 1M dataset.
 ## Overview
 
 ARAG replaces static retrieval heuristics with an LLM agent that reasons about user preferences and item relevance.
-A single `pydantic-ai` agent receives a list of past interactions and works in three stages:
+A single `pydantic-ai` agent receives `user_text` (demographics/preferences) and `history` (past interactions,
+may be empty for cold-start users) and works in three stages:
 
 1. **Item text lookup** — fetches the text of interacted items from LanceDB by ID
 2. **Context understanding** — LLM builds a preference summary from interaction history and item texts,
@@ -22,11 +23,11 @@ The system is served via a BentoML REST endpoint.
 ## Architecture
 
 ```text
-Request (interactions: [{item_id, event_timestamp, event_name, event_value}], top_k)
+Request (user_text, history: [{item_id, event_timestamp, event_name, event_value}], top_k)
     │
-    ├─ [Tool 1] get_ids(item_ids)           → {item_id: item_text}
+    ├─ [Tool 1] get_item_texts(item_ids)    → {item_id: item_text}  (skipped if cold-start)
     ├─ LLM: context understanding           → preference summary
-    ├─ [Tool 2] search(query, exclude_ids)  → candidates  (called 2-4×)
+    ├─ [Tool 2] search_items(query, exclude_ids) → candidates  (called 2-4×)
     └─ LLM: rank + explain                 → RankedItem list
 
 POST /recommend → [{ item_id, item_text, explanation }]
@@ -85,7 +86,8 @@ Request example:
 curl -X POST http://localhost:3000/recommend \
   -H "Content-Type: application/json" \
   -d '{
-    "interactions": [
+    "user_text": "25-year-old male, software engineer, enjoys sci-fi and thriller films",
+    "history": [
       {"item_id": "1193", "event_timestamp": "2000-12-31T22:12:40", "event_name": "rating", "event_value": 5},
       {"item_id": "661",  "event_timestamp": "2000-12-31T22:35:09", "event_name": "rating", "event_value": 3}
     ],

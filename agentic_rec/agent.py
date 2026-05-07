@@ -82,32 +82,10 @@ agent: pydantic_ai.Agent[AgentDeps, RecommendResponse] = pydantic_ai.Agent(
 )
 
 
-@agent.tool
-def get_item_texts(
-    ctx: RunContext[AgentDeps],
-    item_ids: list[str],
-) -> dict[str, str]:
-    """Look up item texts for the given item IDs."""
-    dataset = ctx.deps.index.get_ids(item_ids)
-    return {row["id"]: row["text"] for row in dataset}
-
-
-@agent.tool
-def search_items(
-    ctx: RunContext[AgentDeps],
-    query: str,
-    exclude_ids: list[str] | None = None,
-    top_k: int = 20,
-) -> list[ItemCandidate]:
-    """Search for items matching the query using hybrid vector + full-text search."""
-    dataset = ctx.deps.index.search(query, exclude_ids=exclude_ids, top_k=top_k)
-    return [
-        ItemCandidate(item_id=row["id"], item_text=row["text"], score=row["score"])
-        for row in dataset
-    ]
-
-
-def _build_instructions(request: RecommendRequest) -> str:
+@agent.instructions
+def user_context(ctx: RunContext[AgentDeps]) -> str:
+    """Build per-request instructions from user profile and history."""
+    request = ctx.deps.request
     sorted_history = sorted(
         request.history, key=lambda i: i.event_timestamp, reverse=True
     )
@@ -133,11 +111,33 @@ def _build_instructions(request: RecommendRequest) -> str:
     return "\n".join(lines)
 
 
+@agent.tool
+def get_item_texts(
+    ctx: RunContext[AgentDeps],
+    item_ids: list[str],
+) -> dict[str, str]:
+    """Look up item texts for the given item IDs."""
+    dataset = ctx.deps.index.get_ids(item_ids)
+    return {row["id"]: row["text"] for row in dataset}
+
+
+@agent.tool
+def search_items(
+    ctx: RunContext[AgentDeps],
+    query: str,
+    exclude_ids: list[str] | None = None,
+    top_k: int = 20,
+) -> list[ItemCandidate]:
+    """Search for items matching the query using hybrid vector + full-text search."""
+    dataset = ctx.deps.index.search(query, exclude_ids=exclude_ids, top_k=top_k)
+    return [
+        ItemCandidate(item_id=row["id"], item_text=row["text"], score=row["score"])
+        for row in dataset
+    ]
+
+
 async def recommend(request: RecommendRequest, index: LanceIndex) -> RecommendResponse:
     """Run the recommendation agent and return ranked items."""
     deps = AgentDeps(index=index, request=request)
-    result = await agent.run(
-        instructions=_build_instructions(request),
-        deps=deps,
-    )
+    result = await agent.run(deps=deps)
     return result.output

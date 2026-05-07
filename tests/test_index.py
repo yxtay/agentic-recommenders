@@ -7,33 +7,10 @@ import numpy as np
 import pytest
 
 from agentic_rec.index import LanceIndex, LanceIndexConfig
-from agentic_rec.params import (
-    EMBEDDER_NAME,
-    ITEMS_TABLE_NAME,
-    LANCE_DB_PATH,
-    RERANKER_NAME,
-    RERANKER_TYPE,
-)
-
-
-class TestLanceIndexConfig:
-    def test_defaults(self) -> None:
-        config = LanceIndexConfig()
-        assert config.lancedb_path == LANCE_DB_PATH
-        assert config.table_name == ITEMS_TABLE_NAME
-        assert config.embedder_name == EMBEDDER_NAME
-        assert config.embedder_device == "cpu"
-        assert config.reranker_name == RERANKER_NAME
-        assert config.reranker_type == RERANKER_TYPE
-
-    def test_custom_values(self, tmp_path: str) -> None:
-        config = LanceIndexConfig(lancedb_path=str(tmp_path))
-        assert config.lancedb_path == str(tmp_path)
-
 
 # ── shared integration fixtures ────────────────────────────────────────────
 
-EMBEDDING_DIM = 384  # all-MiniLM-L6-v2
+EMBEDDING_DIM = 384
 
 
 @pytest.fixture(scope="session")

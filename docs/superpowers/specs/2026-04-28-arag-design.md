@@ -19,16 +19,17 @@ for diversity, then ranks candidates with per-item explanations.
 ## Architecture
 
 ```text
-Request (interactions: list[{event_timestamp, event_name, event_value, item_id}], top_k)
+Request (user_text, history: list[{item_id, event_timestamp, event_name, event_value}], top_k)
     │
-    ├─ [Tool 1] fetch_item_texts(item_ids)
+    ├─ [Tool 1] fetch_item_texts(item_ids)  ← skipped if history is empty
     │           Looks up item_text in LanceDB by item_id.
     │           Returns {item_id: item_text} for all interacted items.
     │
     ├─ Agent generates context understanding (no tool call):
-    │           Using interaction details (timestamp, event_name, event_value)
-    │           and retrieved item texts, the agent produces a natural-language
-    │           preference summary with emphasis on recently interacted items.
+    │           Using user_text, interaction details (timestamp, event_name,
+    │           event_value), and retrieved item texts, the agent produces a
+    │           natural-language preference summary. Weights revealed behavior
+    │           over stated preferences when they conflict.
     │
     ├─ [Tool 2] retrieve_candidates(query, top_k, exclude_item_ids)  ← called N times
     │           Hybrid search (vector + FTS) on LanceDB items table.
@@ -36,6 +37,7 @@ Request (interactions: list[{event_timestamp, event_name, event_value, item_id}]
     │           Agent issues multiple queries for diversity, e.g.:
     │             • item_text of a recent highly-rated interaction
     │             • a hypothetical item text generated from context understanding
+    │             • user_text-derived query (stated genre/style preferences)
     │           → List[ItemCandidate] (deduplicated across calls)
     │
     └─ Agent ranks and explains (no tool call):
@@ -52,9 +54,14 @@ BentoML /recommend → RecommendResponse(items: list[RankedItem])
 
 ## Data Flow
 
-### Input interactions
+### Input
 
-The caller supplies a list of past interactions; no user profile lookup is needed:
+The caller supplies `user_text` (demographics/preferences) and an optional `history` of past interactions:
+
+**`user_text`** (str, required): natural-language description of user demographics and stated preferences
+(e.g. "25-year-old male, software engineer, enjoys sci-fi and thriller films").
+
+**`history`** (list, defaults to `[]`): past interactions. Each interaction has:
 
 | Field             | Type       | Description                               |
 |-------------------|------------|-------------------------------------------|
@@ -63,7 +70,8 @@ The caller supplies a list of past interactions; no user profile lookup is neede
 | `event_name`      | `str`      | Interaction type (e.g. `"rating"`)        |
 | `event_value`     | `float`    | Strength of interaction (e.g. 1–5 rating) |
 
-Interactions are sorted by `event_timestamp` descending before being passed to the agent so that recency is preserved.
+When history is non-empty, interactions are sorted by `event_timestamp` descending so recency is preserved.
+When history is empty (cold-start), the agent uses `user_text` as the sole signal for retrieval and ranking.
 
 ### Context understanding (between Tool 1 and Tool 2)
 
@@ -120,7 +128,8 @@ class RankedItem(pydantic.BaseModel):
     explanation: str  # one sentence, references past interaction or preference
 
 class RecommendRequest(pydantic.BaseModel):
-    interactions: list[Interaction]
+    user_text: str
+    history: list[Interaction] = []
     top_k: int = 10
 
 class RecommendResponse(pydantic.BaseModel):
@@ -178,7 +187,7 @@ Before serving, items must be embedded and indexed into LanceDB:
 uv run index   # CLI entry point in pyproject.toml
 ```
 
-This loads `data/ml-1m/items.parquet`, encodes `item_text` with sentence-transformers (`all-MiniLM-L6-v2`),
+This loads `data/ml-1m/items.parquet`, encodes `item_text` with sentence-transformers (`lightonai/DenseOn`),
 and calls `LanceIndex.index_data()`.
 
 ---
@@ -187,8 +196,8 @@ and calls `LanceIndex.index_data()`.
 
 - **Two tools, not five**: removes NLI scoring and context summarisation as separate tool calls. Context
   understanding and ranking are agent reasoning steps, not tool calls, which reduces latency and round-trips.
-- **Input is interactions, not user_id**: caller supplies the interaction list directly; no server-side user
-  profile store is required.
+- **Input is user_text + history, not user_id**: caller supplies demographics/preferences and interaction
+  history directly; no server-side user profile store is required. Supports cold-start (empty history).
 - **Multi-query retrieval for diversity**: agent issues 2–4 hybrid search calls with different query strategies
   rather than a single large retrieval. Deduplication happens client-side.
 - **Hypothetical item text**: when recent history alone is a poor query signal, the agent generates a synthetic

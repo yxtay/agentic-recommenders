@@ -21,7 +21,7 @@ class LanceIndexConfig(pydantic.BaseModel):
     embedder_name: str = EMBEDDER_NAME
     embedder_device: str = "cpu"
     reranker_name: str = RERANKER_NAME
-    reranker_type: str = "cross-encoder"
+    reranker_type: str = RERANKER_TYPE
 ```
 
 ---

@@ -26,7 +26,12 @@ dependencies = [
 ]
 
 [dependency-groups]
-dev = ["huggingface-hub[cli]>=0.35", "pyarrow-stubs>=20.0", "pytest~=9.0", "pytest-asyncio~=1.0"]
+dev = [
+  "huggingface-hub[cli]>=0.35",
+  "pyarrow-stubs>=20.0",
+  "pytest~=9.0",
+  "pytest-asyncio~=1.0",
+]
 
 [project.scripts]
 data = "agentic_rec.data:main"

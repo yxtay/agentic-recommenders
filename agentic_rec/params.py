@@ -15,3 +15,6 @@ RERANKER_TYPE = "pylate"
 ITEMS_TABLE_NAME = "items"
 LANCE_DB_PATH = "lance_db"
 USERS_TABLE_NAME = "users"
+
+# llm
+LLM_MODEL = "openai:gpt-4o"

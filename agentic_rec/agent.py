@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 
 class Interaction(pydantic.BaseModel):
     item_id: str
-    event_timestamp: datetime
+    event_datetime: datetime
     event_name: str
     event_value: float
 
@@ -54,7 +54,7 @@ You are a personalized movie recommender.
 
 You receive a JSON object with:
 - user_text: user demographics and stated preferences
-- history: list of past interactions (may be empty), each with item_id, event_timestamp, \
+- history: list of past interactions (may be empty), each with item_id, event_datetime, \
 event_name, event_value
 - top_k: number of items to recommend
 
@@ -145,21 +145,12 @@ def main(
     user = user_dataset.shuffle()[0]
     logger.info("sampled user: id={}, text={}", user["id"], user["text"])
 
-    history = [
-        Interaction(
-            item_id=item_id,
-            event_timestamp=event_dt,
-            event_name=event_name,
-            event_value=event_value,
-        )
-        for item_id, event_dt, event_name, event_value in zip(
-            user["history"]["item_id"],
-            user["history"]["event_datetime"],
-            user["history"]["event_name"],
-            user["history"]["event_value"],
-            strict=True,
-        )
+    history_adapter = pydantic.TypeAdapter(list[Interaction])
+    history_rows = [
+        dict(zip(user["history"], vals, strict=True))
+        for vals in zip(*user["history"].values(), strict=True)
     ]
+    history = history_adapter.validate_python(history_rows)
 
     index = LanceIndex.load(LanceIndexConfig())
     request = RecommendRequest(user_text=user["text"], history=history, top_k=top_k)

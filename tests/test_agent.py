@@ -39,13 +39,13 @@ def sample_request() -> RecommendRequest:
         history=[
             {
                 "item_id": "1",
-                "event_timestamp": datetime(2024, 1, 1, tzinfo=UTC),
+                "event_datetime": datetime(2024, 1, 1, tzinfo=UTC),
                 "event_name": "rating",
                 "event_value": 5.0,
             },
             {
                 "item_id": "2",
-                "event_timestamp": datetime(2024, 1, 2, tzinfo=UTC),
+                "event_datetime": datetime(2024, 1, 2, tzinfo=UTC),
                 "event_name": "rating",
                 "event_value": 3.0,
             },

@@ -19,14 +19,14 @@ for diversity, then ranks candidates with per-item explanations.
 ## Architecture
 
 ```text
-Request (user_text, history: list[{item_id, event_timestamp, event_name, event_value}], top_k)
+Request (text, history: list[{item_id, event_datetime, event_name, event_value}], top_k)
     │
     ├─ [Tool 1] fetch_item_texts(item_ids)  ← skipped if history is empty
     │           Looks up item_text in LanceDB by item_id.
     │           Returns {item_id: item_text} for all interacted items.
     │
     ├─ Agent generates context understanding (no tool call):
-    │           Using user_text, interaction details (timestamp, event_name,
+    │           Using text, interaction details (timestamp, event_name,
     │           event_value), and retrieved item texts, the agent produces a
     │           natural-language preference summary. Weights revealed behavior
     │           over stated preferences when they conflict.
@@ -37,7 +37,7 @@ Request (user_text, history: list[{item_id, event_timestamp, event_name, event_v
     │           Agent issues multiple queries for diversity, e.g.:
     │             • item_text of a recent highly-rated interaction
     │             • a hypothetical item text generated from context understanding
-    │             • user_text-derived query (stated genre/style preferences)
+    │             • text-derived query (stated genre/style preferences)
     │           → List[ItemCandidate] (deduplicated across calls)
     │
     └─ Agent ranks and explains (no tool call):
@@ -56,22 +56,22 @@ BentoML /recommend → RecommendResponse(items: list[RankedItem])
 
 ### Input
 
-The caller supplies `user_text` (demographics/preferences) and an optional `history` of past interactions:
+The caller supplies `text` (demographics/preferences) and an optional `history` of past interactions:
 
-**`user_text`** (str, required): natural-language description of user demographics and stated preferences
+**`text`** (str, required): natural-language description of user demographics and stated preferences
 (e.g. "25-year-old male, software engineer, enjoys sci-fi and thriller films").
 
 **`history`** (list, defaults to `[]`): past interactions. Each interaction has:
 
-| Field             | Type       | Description                               |
-|-------------------|------------|-------------------------------------------|
-| `item_id`         | `str`      | Interacted item                           |
-| `event_timestamp` | `datetime` | When the interaction occurred             |
-| `event_name`      | `str`      | Interaction type (e.g. `"rating"`)        |
-| `event_value`     | `float`    | Strength of interaction (e.g. 1–5 rating) |
+| Field            | Type       | Description                               |
+|------------------|------------|-------------------------------------------|
+| `item_id`        | `str`      | Interacted item                           |
+| `event_datetime` | `datetime` | When the interaction occurred             |
+| `event_name`     | `str`      | Interaction type (e.g. `"rating"`)        |
+| `event_value`    | `float`    | Strength of interaction (e.g. 1–5 rating) |
 
-When history is non-empty, interactions are sorted by `event_timestamp` descending so recency is preserved.
-When history is empty (cold-start), the agent uses `user_text` as the sole signal for retrieval and ranking.
+When history is non-empty, interactions are sorted by `event_datetime` descending so recency is preserved.
+When history is empty (cold-start), the agent uses `text` as the sole signal for retrieval and ranking.
 
 ### Context understanding (between Tool 1 and Tool 2)
 
@@ -113,7 +113,7 @@ produce the final ranked output. The ranking should:
 ```python
 class Interaction(pydantic.BaseModel):
     item_id: str
-    event_timestamp: datetime
+    event_datetime: datetime
     event_name: str
     event_value: float
 
@@ -128,7 +128,7 @@ class RankedItem(pydantic.BaseModel):
     explanation: str  # one sentence, references past interaction or preference
 
 class RecommendRequest(pydantic.BaseModel):
-    user_text: str
+    text: str
     history: list[Interaction] = []
     top_k: int = 10
 
@@ -196,7 +196,7 @@ and calls `LanceIndex.index_data()`.
 
 - **Two tools, not five**: removes NLI scoring and context summarisation as separate tool calls. Context
   understanding and ranking are agent reasoning steps, not tool calls, which reduces latency and round-trips.
-- **Input is user_text + history, not user_id**: caller supplies demographics/preferences and interaction
+- **Input is text + history, not user_id**: caller supplies demographics/preferences and interaction
   history directly; no server-side user profile store is required. Supports cold-start (empty history).
 - **Multi-query retrieval for diversity**: agent issues 2–4 hybrid search calls with different query strategies
   rather than a single large retrieval. Deduplication happens client-side.

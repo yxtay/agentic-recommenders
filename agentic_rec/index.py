@@ -14,7 +14,6 @@ from loguru import logger
 from sqlalchemy import column, literal
 
 from agentic_rec.params import (
-    DATA_DIR,
     EMBEDDER_NAME,
     ITEMS_PARQUET,
     ITEMS_TABLE_NAME,
@@ -177,13 +176,14 @@ def main(
     parquet_path: str = ITEMS_PARQUET,
     table_name: str = ITEMS_TABLE_NAME,
     lancedb_path: str = LANCE_DB_PATH,
-    data_dir: str = DATA_DIR,
     *,
     overwrite: bool = True,
 ) -> None:
+    import rich
+
     import agentic_rec.data
 
-    agentic_rec.data.main(data_dir=data_dir, overwrite=False)
+    agentic_rec.data.main(overwrite=False)
     dataset = datasets.Dataset.from_parquet(parquet_path)
     logger.info("dataset loaded: {}, shape: {}", parquet_path, dataset.shape)
 
@@ -193,14 +193,11 @@ def main(
 
     sample_id = dataset.shuffle()[0]["id"]
     item = index.get_ids([sample_id])
-    logger.info("get_ids result: {}", item.select_columns(["id", "text"])[0])
+    rich.print(item.select_columns(["id", "text"])[0])
 
     text = item["text"][0]
     results = index.search(text, exclude_ids=[sample_id], top_k=5)
-    logger.info(
-        "search results: {}",
-        results.select_columns(["id", "text", "score"]).to_list(),
-    )
+    rich.print(results.select_columns(["id", "text", "score"]).to_list())
 
 
 if __name__ == "__main__":

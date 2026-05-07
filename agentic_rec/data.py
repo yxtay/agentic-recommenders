@@ -460,17 +460,6 @@ def process_users(
         .with_columns(
             pl.col(col).list.sort().alias(col) for col in ["history", "target"]
         )
-        .with_columns(
-            pl.struct(
-                pl.col(col)
-                .list.eval(  # devskim: ignore DS189424
-                    pl.element().struct.field(field)
-                )
-                .alias(field)
-                for field in activity_cols
-            ).alias(col)
-            for col in ["history", "target"]
-        )
     )
     users_processed = (
         users.lazy()

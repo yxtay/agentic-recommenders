@@ -38,7 +38,7 @@ uv run pytest tests/test_index.py::TestSearch::test_returns_dataset -v
 ## Architecture
 
 ARAG (Agentic Retrieval-Augmented Generation) for MovieLens 1M. A single `pydantic-ai` agent receives
-`user_text` (demographics/preferences) and `history` (past interactions, may be empty for cold-start) and
+`text` (demographics/preferences) and `history` (past interactions, may be empty for cold-start) and
 orchestrates two tools: item-text lookup by ID (`get_item_texts`) and hybrid candidate retrieval
 (`search_items`). Context understanding and item ranking with per-item explanations are done by the agent's
 LLM directly (no separate tool calls). Served via BentoML.
@@ -83,13 +83,13 @@ Module-level `pydantic_ai.Agent` singleton with `AgentDeps` (index + request) fo
 
 - **`system_prompt`** (static): fixed recommendation workflow instructions.
 - **`@agent.instructions`** (dynamic): per-request user context built from `ctx.deps.request`
-  (user_text, history sorted by recency, top_k).
+  (text, history sorted by recency, top_k).
 - **Tools**: `get_item_texts` (delegates to `index.get_ids`) and `search_items` (delegates to
   `index.search`). Both access the index via `ctx.deps.index`.
 - **`recommend(request, index)`**: async entrypoint — constructs deps and calls `agent.run()`.
 
-Request accepts `user_text` (required), `history` (list of interactions, defaults to `[]`),
-and `top_k` (default 10). Cold-start (empty history) is handled by the agent using `user_text`
+Request accepts `text` (required), `history` (list of interactions, defaults to `[]`),
+and `top_k` (default 10). Cold-start (empty history) is handled by the agent using `text`
 alone for retrieval.
 
 See `docs/superpowers/specs/2026-05-07-arag-request-redesign.md` for full spec.

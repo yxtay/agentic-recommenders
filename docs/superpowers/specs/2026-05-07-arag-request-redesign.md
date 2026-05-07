@@ -7,8 +7,8 @@
 
 ## Overview
 
-Restructure the `RecommendRequest` to accept `user_text` (demographics/preferences) and `history`
-(past interactions, may be empty) as top-level fields. The agent uses `user_text` as both LLM context
+Restructure the `RecommendRequest` to accept `text` (demographics/preferences) and `history`
+(past interactions, may be empty) as top-level fields. The agent uses `text` as both LLM context
 and a retrieval signal. This enables cold-start recommendations when history is empty.
 
 ---
@@ -18,12 +18,12 @@ and a retrieval signal. This enables cold-start recommendations when history is 
 ```python
 class Interaction(pydantic.BaseModel):
     item_id: str
-    event_timestamp: datetime
+    event_datetime: datetime
     event_name: str
     event_value: float
 
 class RecommendRequest(pydantic.BaseModel):
-    user_text: str                  # user demographics / stated preferences
+    text: str                  # user demographics / stated preferences
     history: list[Interaction] = [] # past interactions, may be empty
     top_k: int = 10
 
@@ -41,7 +41,7 @@ class RecommendResponse(pydantic.BaseModel):
 | Field (old)    | Field (new) | Notes                         |
 |----------------|-------------|-------------------------------|
 | `interactions` | `history`   | Renamed; now defaults to `[]` |
-| —              | `user_text` | New required field            |
+| —              | `text`      | New required field            |
 | `top_k`        | `top_k`     | Unchanged                     |
 
 ---
@@ -51,13 +51,13 @@ class RecommendResponse(pydantic.BaseModel):
 ### Normal case (history is non-empty)
 
 ```text
-Request (user_text, history, top_k)
+Request (text, history, top_k)
     │
     ├─ [Tool 1] get_ids(item_ids from history)
     │           → {item_id: item_text} for interacted items
     │
     ├─ LLM: context understanding
-    │           Inputs: user_text + item texts + interaction metadata
+    │           Inputs: text + item texts + interaction metadata
     │           Produces preference summary weighing both stated preferences
     │           and revealed behavior (recent high-value interactions).
     │
@@ -65,7 +65,7 @@ Request (user_text, history, top_k)
     │           Query strategies:
     │             • item_text of a recent high-value interaction
     │             • hypothetical item text from preference summary
-    │             • user_text-derived query (e.g., stated genre preferences)
+    │             • text-derived query (e.g., stated genre preferences)
     │           All interacted item_ids excluded.
     │
     └─ LLM: rank + explain → RecommendResponse
@@ -74,18 +74,18 @@ Request (user_text, history, top_k)
 ### Cold-start case (history is empty)
 
 ```text
-Request (user_text, history=[], top_k)
+Request (text, history=[], top_k)
     │
     ├─ Tool 1 skipped (no items to look up)
     │
     ├─ LLM: context understanding
-    │           Inputs: user_text only
+    │           Inputs: text only
     │           Produces preference summary from stated demographics/preferences.
     │
     ├─ [Tool 2] search(query) × 1-2 calls
     │           Query strategies:
-    │             • user_text directly (or key phrases extracted from it)
-    │             • hypothetical item text generated from user_text
+    │             • text directly (or key phrases extracted from it)
+    │             • hypothetical item text generated from text
     │           No exclude_ids needed.
     │
     └─ LLM: rank + explain → RecommendResponse
@@ -95,12 +95,12 @@ Request (user_text, history=[], top_k)
 
 ## System Prompt Changes
 
-The agent's system prompt includes `user_text` as part of the user message context. The prompt
+The agent's system prompt includes `text` as part of the user message context. The prompt
 instructs the agent to:
 
-1. Always consider `user_text` when building the preference summary.
-2. Use `user_text` as one of the retrieval query strategies (alongside history-derived queries).
-3. When history is empty, rely entirely on `user_text` for retrieval signals — skip `get_ids`.
+1. Always consider `text` when building the preference summary.
+2. Use `text` as one of the retrieval query strategies (alongside history-derived queries).
+3. When history is empty, rely entirely on `text` for retrieval signals — skip `get_ids`.
 4. Weight revealed behavior (history) over stated preferences when they conflict.
 
 ---
@@ -111,10 +111,10 @@ instructs the agent to:
 
 ```json
 {
-  "user_text": "25-year-old male, software engineer, enjoys sci-fi and thriller films",
+  "text": "25-year-old male, software engineer, enjoys sci-fi and thriller films",
   "history": [
-    {"item_id": "1193", "event_timestamp": "2000-12-31T22:12:40", "event_name": "rating", "event_value": 5},
-    {"item_id": "661",  "event_timestamp": "2000-12-31T22:35:09", "event_name": "rating", "event_value": 3}
+    {"item_id": "1193", "event_datetime": "2000-12-31T22:12:40", "event_name": "rating", "event_value": 5},
+    {"item_id": "661",  "event_datetime": "2000-12-31T22:35:09", "event_name": "rating", "event_value": 3}
   ],
   "top_k": 10
 }
@@ -124,7 +124,7 @@ Cold-start example:
 
 ```json
 {
-  "user_text": "35-year-old female, teacher, loves romantic comedies and drama",
+  "text": "35-year-old female, teacher, loves romantic comedies and drama",
   "history": [],
   "top_k": 10
 }
@@ -147,10 +147,10 @@ Cold-start example:
 
 ## Key Design Decisions
 
-- **`user_text` as retrieval signal**: the agent can use stated preferences (e.g., "prefers sci-fi")
+- **`text` as retrieval signal**: the agent can use stated preferences (e.g., "prefers sci-fi")
   directly as search queries, not just as LLM reasoning context. This allows preference-based
   retrieval even when history is sparse.
-- **Cold-start via `user_text` only**: no dependency on a users index or collaborative filtering.
+- **Cold-start via `text` only**: no dependency on a users index or collaborative filtering.
   The agent generates retrieval queries from demographics/preferences alone.
 - **History defaults to empty list**: makes the field optional in the request body, enabling
   cold-start without a separate endpoint.

@@ -34,7 +34,7 @@ class RankedItem(pydantic.BaseModel):
 
 
 class RecommendRequest(pydantic.BaseModel):
-    user_text: str
+    text: str
     history: list[Interaction] = []
     top_k: int = 10
 
@@ -53,7 +53,7 @@ SYSTEM_PROMPT = """\
 You are a personalized movie recommender.
 
 You receive a JSON object with:
-- user_text: user demographics and stated preferences
+- text: user demographics and stated preferences
 - history: list of past interactions (may be empty), each with item_id, event_datetime, \
 event_name, event_value
 - top_k: number of items to recommend
@@ -134,6 +134,7 @@ def main(
     import asyncio
 
     import datasets
+    import rich
     from loguru import logger
 
     import agentic_rec.index
@@ -141,26 +142,17 @@ def main(
 
     agentic_rec.index.main(overwrite=False)
 
-    user_dataset = datasets.Dataset.from_parquet(parquet_path)
-    user = user_dataset.shuffle()[0]
-    logger.info("sampled user: id={}, text={}", user["id"], user["text"])
-
-    history_adapter = pydantic.TypeAdapter(list[Interaction])
-    history_rows = [
-        dict(zip(user["history"], vals, strict=True))
-        for vals in zip(*user["history"].values(), strict=True)
-    ]
-    history = history_adapter.validate_python(history_rows)
-
-    index = LanceIndex.load(LanceIndexConfig())
-    request = RecommendRequest(user_text=user["text"], history=history, top_k=top_k)
+    users_dataset = datasets.Dataset.from_parquet(parquet_path)
+    sample_user = users_dataset.shuffle()[0]
+    request = RecommendRequest.model_validate({**sample_user, "top_k": top_k})
+    logger.info("sampled user: {}", request.text)
     logger.info(
         "request: {} interactions, top_k={}", len(request.history), request.top_k
     )
 
+    index = LanceIndex.load(LanceIndexConfig())
     response = asyncio.run(recommend(request, index))
-    for i, item in enumerate(response.items, 1):
-        logger.info("{}. {} — {}", i, item.item_text, item.explanation)
+    rich.print(response)
 
 
 if __name__ == "__main__":

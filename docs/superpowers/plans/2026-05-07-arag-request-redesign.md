@@ -5,12 +5,12 @@
 > superpowers:executing-plans to implement this plan task-by-task.
 > Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Restructure ARAG to accept `user_text` + `history` request fields and support cold-start recommendations.
+**Goal:** Restructure ARAG to accept `text` + `history` request fields and support cold-start recommendations.
 
-**Architecture:** A pydantic-ai agent receives `user_text` (demographics/preferences)
+**Architecture:** A pydantic-ai agent receives `text` (demographics/preferences)
 and `history` (past interactions). When history is present, the agent fetches item texts
 and uses both signals for retrieval. When history is empty (cold-start), the agent uses
-`user_text` alone for retrieval queries. Served via BentoML.
+`text` alone for retrieval queries. Served via BentoML.
 
 **Tech Stack:** pydantic-ai, pydantic, lancedb, BentoML, datasets, pytest
 
@@ -109,18 +109,18 @@ class TestInteraction:
 
 
 class TestRecommendRequest:
-    def test_required_user_text(self) -> None:
+    def test_required_text(self) -> None:
         with pytest.raises(Exception):
             RecommendRequest()
 
     def test_history_defaults_empty(self) -> None:
-        req = RecommendRequest(user_text="25 year old male, likes sci-fi")
+        req = RecommendRequest(text="25 year old male, likes sci-fi")
         assert req.history == []
         assert req.top_k == 10
 
     def test_with_history(self) -> None:
         req = RecommendRequest(
-            user_text="test user",
+            text="test user",
             history=[
                 Interaction(
                     item_id="1",
@@ -208,7 +208,7 @@ class RankedItem(pydantic.BaseModel):
 
 
 class RecommendRequest(pydantic.BaseModel):
-    user_text: str
+    text: str
     history: list[Interaction] = []
     top_k: int = 10
 
@@ -285,7 +285,7 @@ if TYPE_CHECKING:
 
 SYSTEM_PROMPT = """\
 You are a movie recommendation agent. You receive:
-- user_text: a description of the user's demographics and stated preferences
+- text: a description of the user's demographics and stated preferences
 - history: their past interactions (may be empty for cold-start users)
 
 Your task is to recommend {top_k} movies the user will enjoy.
@@ -293,19 +293,19 @@ Your task is to recommend {top_k} movies the user will enjoy.
 ## Workflow
 
 1. If history is non-empty, call get_item_texts to fetch the text of interacted items.
-2. Build a preference summary from user_text and (if available) the interaction history.
+2. Build a preference summary from text and (if available) the interaction history.
   Weight revealed behavior (history) over stated preferences when they conflict.
 3. Call search_items 2-4 times with different queries for diversity:
   - Item text of a recent high-value interaction (if history exists)
   - A hypothetical item description based on the preference summary
-  - A query derived from user_text (stated genre/style preferences)
+  - A query derived from text (stated genre/style preferences)
   Always pass interacted item_ids as exclude_ids.
 4. Rank deduplicated candidates by relevance and diversity.
 5. Return exactly {top_k} RankedItem results with one-sentence explanations.
 
 ## Cold-start (empty history)
 
-Skip step 1. Use user_text as the sole signal. Generate 1-2 search queries from
+Skip step 1. Use text as the sole signal. Generate 1-2 search queries from
 stated preferences and demographics.
 """
 
@@ -400,7 +400,7 @@ class TestRecommend:
             mock_index = MagicMock(spec=LanceIndex)
 
             request = RecommendRequest(
-                user_text="likes sci-fi",
+                text="likes sci-fi",
                 history=[],
                 top_k=1,
             )
@@ -422,7 +422,7 @@ Add to `agentic_rec/agent.py`:
 async def recommend(request: RecommendRequest, index: LanceIndex) -> RecommendResponse:
     agent = create_agent(index)
 
-    user_message_parts = [f"User profile: {request.user_text}"]
+    user_message_parts = [f"User profile: {request.text}"]
 
     if request.history:
         sorted_history = sorted(
@@ -510,7 +510,7 @@ class TestRecommenderService:
             service.index = MagicMock()
 
             result = await service.recommend(
-                user_text="likes action movies",
+                text="likes action movies",
                 history=[],
                 top_k=1,
             )
@@ -549,12 +549,12 @@ class RecommenderService:
     @bentoml.api
     async def recommend(
         self,
-        user_text: str,
+        text: str,
         history: list[Interaction] | None = None,
         top_k: int = 10,
     ) -> RecommendResponse:
         request = RecommendRequest(
-            user_text=user_text,
+            text=text,
             history=history or [],
             top_k=top_k,
         )
@@ -585,12 +585,12 @@ git commit -m "feat: add BentoML service with /recommend endpoint"
 - [ ] **Step 1: Update README request example**
 
 In `README.md`, replace the curl example and architecture diagram to reflect the new
-`user_text` + `history` request format:
+`text` + `history` request format:
 
 Architecture section:
 
 ```text
-Request (user_text, history: [{item_id, event_timestamp, event_name, event_value}], top_k)
+Request (text, history: [{item_id, event_timestamp, event_name, event_value}], top_k)
     │
     ├─ [Tool 1] get_ids(item_ids)           → {item_id: item_text}  (skipped if history empty)
     ├─ LLM: context understanding           → preference summary
@@ -606,7 +606,7 @@ Curl example:
 curl -X POST http://localhost:3000/recommend \
   -H "Content-Type: application/json" \
   -d '{
-    "user_text": "25-year-old male, software engineer, enjoys sci-fi and thriller films",
+    "text": "25-year-old male, software engineer, enjoys sci-fi and thriller films",
     "history": [
       {"item_id": "1193", "event_timestamp": "2000-12-31T22:12:40", "event_name": "rating", "event_value": 5},
       {"item_id": "661",  "event_timestamp": "2000-12-31T22:35:09", "event_name": "rating", "event_value": 3}
@@ -617,7 +617,7 @@ curl -X POST http://localhost:3000/recommend \
 
 - [ ] **Step 2: Update CLAUDE.md architecture section**
 
-Update the architecture description to mention `user_text` + `history` input format and cold-start support.
+Update the architecture description to mention `text` + `history` input format and cold-start support.
 
 - [ ] **Step 3: Run full test suite**
 

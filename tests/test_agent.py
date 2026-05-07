@@ -35,7 +35,7 @@ def mock_index() -> MagicMock:
 @pytest.fixture
 def sample_request() -> RecommendRequest:
     return RecommendRequest(
-        user_text="25-year-old male, enjoys sci-fi and thriller films",
+        text="25-year-old male, enjoys sci-fi and thriller films",
         history=[
             {
                 "item_id": "1",
@@ -57,7 +57,7 @@ def sample_request() -> RecommendRequest:
 @pytest.fixture
 def cold_start_request() -> RecommendRequest:
     return RecommendRequest(
-        user_text="35-year-old female, teacher, loves romantic comedies",
+        text="35-year-old female, teacher, loves romantic comedies",
         top_k=10,
     )
 
@@ -82,7 +82,7 @@ class TestInstructions:
         ctx = MagicMock()
         ctx.deps = AgentDeps(index=mock_index, request=sample_request)
         result = user_context(ctx)
-        assert '"user_text"' in result
+        assert '"text"' in result
         assert "sci-fi" in result
         assert '"top_k":5' in result.replace(" ", "")
 

@@ -49,23 +49,12 @@ class AgentDeps:
     request: RecommendRequest
 
 
-agent: pydantic_ai.Agent[AgentDeps, RecommendResponse] = pydantic_ai.Agent(
-    model=LLM_MODEL,
-    output_type=RecommendResponse,
-    defer_model_check=True,
-)
-
-
-@agent.system_prompt
-def system_prompt(ctx: RunContext[AgentDeps]) -> str:
-    top_k = ctx.deps.request.top_k
-    return f"""\
-You are a personalized movie recommender. Your job is to recommend {top_k} movies \
-that the user will enjoy.
+SYSTEM_PROMPT = """\
+You are a personalized movie recommender.
 
 Workflow:
 
-1. Context understanding: receive user profile (user_text) and interaction history.
+1. Context understanding: receive user profile and interaction history via instructions.
     If history is not empty, call get_item_texts with all interacted item IDs.
     Analyze retrieved texts with event values (ratings) to build a preference summary,
     emphasizing recent and highly-rated interactions.
@@ -78,12 +67,19 @@ Workflow:
 
 3. Cold-start: if history is empty, skip get_item_texts and rely solely on user_text.
 
-4. Ranking with explanations: from all candidates, select the top {top_k} items.
+4. Ranking with explanations: from all candidates, select the top items requested.
     Rank by relevance and diversity.
     For each item, provide a concise one-sentence explanation of why it suits the user.
 
 Return a RecommendResponse with the ranked list of items.
 """
+
+agent: pydantic_ai.Agent[AgentDeps, RecommendResponse] = pydantic_ai.Agent(
+    model=LLM_MODEL,
+    system_prompt=SYSTEM_PROMPT,
+    output_type=RecommendResponse,
+    defer_model_check=True,
+)
 
 
 @agent.tool
@@ -111,12 +107,16 @@ def search_items(
     ]
 
 
-def _build_user_message(request: RecommendRequest) -> str:
+def _build_instructions(request: RecommendRequest) -> str:
     sorted_history = sorted(
         request.history, key=lambda i: i.event_timestamp, reverse=True
     )
 
-    lines: list[str] = [f"User profile: {request.user_text}", ""]
+    lines: list[str] = [
+        f"User profile: {request.user_text}",
+        f"Number of recommendations requested: {request.top_k}",
+        "",
+    ]
 
     if sorted_history:
         lines.append("Interaction history (most recent first):")
@@ -130,13 +130,14 @@ def _build_user_message(request: RecommendRequest) -> str:
     else:
         lines.append("No interaction history (cold-start).")
 
-    lines.append("")
-    lines.append(f"Please recommend {request.top_k} items.")
     return "\n".join(lines)
 
 
 async def recommend(request: RecommendRequest, index: LanceIndex) -> RecommendResponse:
     """Run the recommendation agent and return ranked items."""
     deps = AgentDeps(index=index, request=request)
-    result = await agent.run(_build_user_message(request), deps=deps)
+    result = await agent.run(
+        instructions=_build_instructions(request),
+        deps=deps,
+    )
     return result.output

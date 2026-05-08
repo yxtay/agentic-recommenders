@@ -39,7 +39,9 @@ data = "agentic_rec.data:main"
 index = "agentic_rec.index:main"
 agent = "agentic_rec.agent:main"
 app = "agentic_rec.app:main"
-serve = "agentic_rec.app:serve"
+
+[tool.fastapi]
+entrypoint = "agentic_rec.app:app"
 
 [tool.uv.sources]
 torch = [{ index = "torch-cpu" }]

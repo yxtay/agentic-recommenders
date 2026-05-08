@@ -24,8 +24,11 @@ uv run index --parquet_path data/ml-1m/users.parquet --table_name users
 # run agent sanity check (samples a user, runs recommendation)
 uv run agent
 
+# app sanity check (hits healthz, info, user/item lookup and recommend)
+uv run app
+
 # serve FastAPI endpoint
-uv run fastapi run agentic_rec.app:app
+uv run fastapi run
 
 # lint and format
 uv run ruff check --fix .

@@ -69,4 +69,4 @@ USER ${USER}
 HEALTHCHECK CMD ["curl", "-fSs", "http://localhost:8000/healthz"]
 
 EXPOSE 8000
-ENTRYPOINT ["uv", "run", "serve"]
+ENTRYPOINT ["uv", "run", "fastapi", "run"]

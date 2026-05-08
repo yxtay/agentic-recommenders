@@ -183,12 +183,7 @@ def main(limit: int = 5) -> None:
         rich.print(resp.json())
 
 
-def serve(host: str = "0.0.0.0", port: int = 8000) -> None:  # noqa: S104
-    """Run the FastAPI app with uvicorn."""
-    import uvicorn
-
-    uvicorn.run("agentic_rec.app:app", host=host, port=port)
-
-
 if __name__ == "__main__":
-    main()
+    from jsonargparse import auto_cli
+
+    auto_cli(main, as_positional=False)

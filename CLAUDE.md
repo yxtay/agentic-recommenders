@@ -21,8 +21,11 @@ uv run data
 uv run index
 uv run index --parquet_path data/ml-1m/users.parquet --table_name users
 
-# serve BentoML endpoint
-uv run bentoml serve agentic_rec.service:RecommenderService
+# run agent sanity check (samples a user, runs recommendation)
+uv run agent
+
+# serve FastAPI endpoint
+uv run fastapi run agentic_rec.app:app
 
 # lint and format
 uv run ruff check --fix .
@@ -41,18 +44,18 @@ ARAG (Agentic Retrieval-Augmented Generation) for MovieLens 1M. A single `pydant
 `text` (demographics/preferences) and `history` (past interactions, may be empty for cold-start) and
 orchestrates two tools: item-text lookup by ID (`get_item_texts`) and hybrid candidate retrieval
 (`search_items`). Context understanding and item ranking with per-item explanations are done by the agent's
-LLM directly (no separate tool calls). Served via BentoML.
+LLM directly (no separate tool calls). Served via FastAPI.
 
 ### Modules
 
-| File                     | Responsibility                                               |
-|--------------------------|--------------------------------------------------------------|
-| `agentic_rec/params.py`  | All constants: paths, model names, table names               |
-| `agentic_rec/data.py`    | MovieLens download, Parquet conversion, train/val/test split |
-| `agentic_rec/index.py`   | LanceDB item index: embedding, hybrid search, reranking      |
-| `agentic_rec/models.py`  | Pydantic models: request/response types, AgentDeps           |
-| `agentic_rec/agent.py`   | pydantic-ai `Agent` singleton with tools                     |
-| `agentic_rec/service.py` | BentoML `POST /recommend` endpoint _(planned)_               |
+| File | Responsibility |
+| --- | --- |
+| `agentic_rec/params.py` | All constants: paths, model names, table names |
+| `agentic_rec/data.py` | MovieLens download, Parquet conversion, train/val/test split |
+| `agentic_rec/index.py` | LanceDB item index: embedding, hybrid search, reranking |
+| `agentic_rec/models.py` | Pydantic models: request/response types |
+| `agentic_rec/agent.py` | pydantic-ai `Agent` singleton with tools |
+| `agentic_rec/app.py` | FastAPI `POST /recommend` endpoint _(planned)_ |
 
 ### Data columns
 
@@ -99,7 +102,7 @@ See `docs/superpowers/specs/2026-05-07-arag-request-redesign.md` for full spec.
 
 ### LLM configuration
 
-Set `LLM_MODEL` (any pydantic-ai model string, default `openai:gpt-4o`) and the matching API key env var before serving.
+Set `LLM_MODEL` (any pydantic-ai model string, default `cerebras:llama3.1-8b`) and the matching API key env var before serving.
 
 ## Key conventions
 

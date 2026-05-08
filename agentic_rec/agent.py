@@ -8,7 +8,7 @@ import pydantic_ai
 from pydantic_ai import RunContext
 
 from agentic_rec.models import ItemCandidate, RecommendRequest, RecommendResponse
-from agentic_rec.params import LLM_MODEL, USERS_PARQUET
+from agentic_rec.params import ITEMS_PARQUET, LLM_MODEL, USERS_PARQUET
 
 if TYPE_CHECKING:
     from agentic_rec.index import LanceIndex
@@ -46,7 +46,9 @@ Workflow:
 
 4. Ranking with explanations: from all candidates, select the limit items.
     Rank by relevance and diversity.
-    For each item, provide a concise one-sentence explanation of why it suits the user.
+    For each item, provide a concise explanation of why it is recommended,
+    referencing specific preferences or past interactions when possible.
+    Use short explanations such as "Similar to...", "Matches your interest in...", etc.
 
 Return a RecommendResponse with the ranked list of items.
 """
@@ -102,22 +104,26 @@ def main(limit: int = 5) -> None:
 
     import datasets
     import rich
-    from loguru import logger
 
+    import agentic_rec.data
     import agentic_rec.index
     from agentic_rec.index import LanceIndex, LanceIndexConfig
 
-    agentic_rec.index.main(overwrite=False)
+    agentic_rec.data.main(overwrite=False)
+    index_config = LanceIndexConfig()
+    try:
+        index = LanceIndex.load(index_config)
+    except FileNotFoundError:
+        dataset = datasets.Dataset.from_parquet(ITEMS_PARQUET)
+        index = LanceIndex(index_config)
+        index.index_data(dataset)
 
     users_dataset = datasets.Dataset.from_parquet(USERS_PARQUET)
     sample_user = users_dataset.shuffle()[0]
     request = RecommendRequest.model_validate({**sample_user, "limit": limit})
-    logger.info("sampled user: {}", request.text)
-    logger.info(
-        "request: {} interactions, limit={}", len(request.history), request.limit
-    )
+    request.history = request.history[-20:]
+    rich.print(request)
 
-    index = LanceIndex.load(LanceIndexConfig())
     deps = AgentDeps(index=index, request=request)
     response = asyncio.run(agent.run(instructions=MOVIE_INSTRUCTIONS, deps=deps))
     rich.print(response.output)

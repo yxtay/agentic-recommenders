@@ -10,23 +10,23 @@
 **Architecture:** A pydantic-ai agent receives `text` (demographics/preferences)
 and `history` (past interactions). When history is present, the agent fetches item texts
 and uses both signals for retrieval. When history is empty (cold-start), the agent uses
-`text` alone for retrieval queries. Served via BentoML.
+`text` alone for retrieval queries. Served via FastAPI.
 
-**Tech Stack:** pydantic-ai, pydantic, lancedb, BentoML, datasets, pytest
+**Tech Stack:** pydantic-ai, pydantic, lancedb, FastAPI, datasets, pytest
 
 ---
 
 ## File Structure
 
-| File                              | Responsibility                                                       |
-|-----------------------------------|----------------------------------------------------------------------|
-| `agentic_rec/agent.py` (create)   | Request/response models, pydantic-ai Agent, two tools, system prompt |
-| `agentic_rec/service.py` (create) | BentoML service with `/recommend` POST endpoint                      |
-| `agentic_rec/params.py` (modify)  | Add `LLM_MODEL` constant                                             |
-| `tests/test_agent.py` (create)    | Unit tests for agent models and tool logic                           |
-| `tests/test_service.py` (create)  | Integration tests for BentoML endpoint                               |
-| `README.md` (modify)              | Update request examples                                              |
-| `CLAUDE.md` (modify)              | Update architecture description                                      |
+| File | Responsibility |
+| --- | --- |
+| `agentic_rec/agent.py` (create) | Request/response models, pydantic-ai Agent, two tools, system prompt |
+| `agentic_rec/app.py` (create) | FastAPI service with `/recommend` POST endpoint |
+| `agentic_rec/params.py` (modify) | Add `LLM_MODEL` constant |
+| `tests/test_agent.py` (create) | Unit tests for agent models and tool logic |
+| `tests/test_app.py` (create) | Integration tests for FastAPI endpoint |
+| `README.md` (modify) | Update request examples |
+| `CLAUDE.md` (modify) | Update architecture description |
 
 ---
 
@@ -42,13 +42,13 @@ Add to the end of `agentic_rec/params.py`:
 
 ```python
 # llm
-LLM_MODEL = "openai:gpt-4o"
+LLM_MODEL = "cerebras:llama3.1-8b"
 ```
 
 - [ ] **Step 2: Verify no import errors**
 
 Run: `uv run python -c "from agentic_rec.params import LLM_MODEL; print(LLM_MODEL)"`
-Expected: `openai:gpt-4o`
+Expected: `cerebras:llama3.1-8b`
 
 - [ ] **Step 3: Commit**
 
@@ -463,119 +463,7 @@ git commit -m "feat: add recommend() entrypoint for agent"
 
 ---
 
-### Task 5: Create BentoML service
-
-**Files:**
-
-- Create: `agentic_rec/service.py`
-- Create: `tests/test_service.py`
-
-- [ ] **Step 1: Write failing test for service**
-
-Create `tests/test_service.py`:
-
-```python
-from __future__ import annotations
-
-from unittest.mock import AsyncMock, MagicMock, patch
-
-import pytest
-
-from agentic_rec.agent import RankedItem, RecommendResponse
-
-
-class TestRecommenderService:
-    def test_service_importable(self) -> None:
-        from agentic_rec.service import RecommenderService
-
-        assert RecommenderService is not None
-
-    @pytest.mark.asyncio
-    async def test_recommend_endpoint(self) -> None:
-        from agentic_rec.service import RecommenderService
-
-        mock_response = RecommendResponse(
-            items=[
-                RankedItem(
-                    item_id="1",
-                    item_text="Test Movie",
-                    explanation="Good match",
-                )
-            ]
-        )
-
-        with patch("agentic_rec.service.recommend", new_callable=AsyncMock) as mock_rec:
-            mock_rec.return_value = mock_response
-            service = RecommenderService()
-            service.index = MagicMock()
-
-            result = await service.recommend(
-                text="likes action movies",
-                history=[],
-                top_k=1,
-            )
-            assert len(result.items) == 1
-            assert result.items[0].item_id == "1"
-```
-
-- [ ] **Step 2: Run test to verify it fails**
-
-Run: `uv run pytest tests/test_service.py -v`
-Expected: FAIL (cannot import `agentic_rec.service`)
-
-- [ ] **Step 3: Implement service.py**
-
-Create `agentic_rec/service.py`:
-
-```python
-from __future__ import annotations
-
-import bentoml
-
-from agentic_rec.agent import (
-    Interaction,
-    RecommendRequest,
-    RecommendResponse,
-    recommend,
-)
-from agentic_rec.index import LanceIndex, LanceIndexConfig
-
-
-@bentoml.service
-class RecommenderService:
-    def __init__(self) -> None:
-        self.index = LanceIndex.load(LanceIndexConfig())
-
-    @bentoml.api
-    async def recommend(
-        self,
-        text: str,
-        history: list[Interaction] | None = None,
-        top_k: int = 10,
-    ) -> RecommendResponse:
-        request = RecommendRequest(
-            text=text,
-            history=history or [],
-            top_k=top_k,
-        )
-        return await recommend(request, self.index)
-```
-
-- [ ] **Step 4: Run tests to verify they pass**
-
-Run: `uv run pytest tests/test_service.py -v`
-Expected: All PASS
-
-- [ ] **Step 5: Commit**
-
-```bash
-git add agentic_rec/service.py tests/test_service.py
-git commit -m "feat: add BentoML service with /recommend endpoint"
-```
-
----
-
-### Task 6: Update README and CLAUDE.md
+### Task 5: Update README and CLAUDE.md
 
 **Files:**
 

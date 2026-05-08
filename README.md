@@ -18,7 +18,7 @@ may be empty for cold-start users) and works in three stages:
 4. **Ranking with explanations** — LLM ranks candidates by relevance and diversity, attaching a
     one-sentence explanation to each recommendation
 
-The system is served via a BentoML REST endpoint.
+The system is served via a FastAPI REST endpoint.
 
 ## Architecture
 
@@ -37,7 +37,7 @@ POST /recommend → [{ item_id, item_text, explanation }]
 
 - Python 3.12+
 - `uv` for environment and task management — see `pyproject.toml`
-- An LLM API key matching the configured model (default: OpenAI)
+- An LLM API key matching the configured model
 
 ```bash
 uv sync
@@ -67,17 +67,17 @@ uv run index --parquet_path data/ml-1m/users.parquet --table_name users
 ### 3. Configure the LLM
 
 ```bash
-export LLM_MODEL="openai:gpt-4o"   # any pydantic-ai model string
-export OPENAI_API_KEY="sk-..."
+export LLM_MODEL="cerebras:llama3.1-8b"   # any pydantic-ai model string
+export CEREBRAS_API_KEY="..."
 ```
 
-Supported model strings: `openai:gpt-4o`, `anthropic:claude-haiku-4-5`, `ollama:llama3`, and any other
+Supported model strings: `cerebras:llama3.1-8b`, `anthropic:claude-haiku-4-5`, `ollama:llama3`, and any other
 [pydantic-ai provider](https://ai.pydantic.dev/models/).
 
 ### 4. Serve
 
 ```bash
-uv run bentoml serve agentic_rec.service:RecommenderService
+uv run fastapi run agentic_rec.app:app
 ```
 
 Request example:

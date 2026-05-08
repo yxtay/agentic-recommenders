@@ -3,7 +3,7 @@
 **Date:** 2026-04-28
 **Paper:**
 [ARAG: Agentic Retrieval Augmented Generation for Personalized Recommendation](https://arxiv.org/abs/2506.21931)
-**Stack:** pydantic-ai, lancedb, sentence-transformers, datasets, BentoML, Polars
+**Stack:** pydantic-ai, lancedb, sentence-transformers, datasets, FastAPI, Polars
 
 ---
 
@@ -47,7 +47,7 @@ Request (text, history: list[{item_id, event_datetime, event_name, event_value}]
                 interaction, a detected preference, etc.).
                 Returns RecommendResponse.
 
-BentoML /recommend → RecommendResponse(items: list[RankedItem])
+POST /recommend → RecommendResponse(items: list[RankedItem])
 ```
 
 ---
@@ -140,12 +140,12 @@ class RecommendResponse(pydantic.BaseModel):
 
 ## Modules
 
-| File                     | Responsibility                                                            |
-|--------------------------|---------------------------------------------------------------------------|
-| `agentic_rec/agent.py`   | `Agent` definition, system prompt, two tools, pydantic result types       |
-| `agentic_rec/index.py`   | `LanceIndex` with `get_ids` (for Tool 1) and `search` hybrid (for Tool 2) |
-| `agentic_rec/service.py` | BentoML `Service` wrapping the agent; `/recommend` POST endpoint          |
-| `agentic_rec/params.py`  | `LLM_MODEL` constant (default `"openai:gpt-4o"`)                          |
+| File | Responsibility |
+| --- | --- |
+| `agentic_rec/agent.py` | `Agent` definition, system prompt, two tools, pydantic result types |
+| `agentic_rec/index.py` | `LanceIndex` with `get_ids` (for Tool 1) and `search` hybrid (for Tool 2) |
+| `agentic_rec/app.py` | FastAPI app wrapping the agent; `/recommend` POST endpoint |
+| `agentic_rec/params.py` | `LLM_MODEL` constant |
 
 `data.py` is unchanged. `NLI_THRESHOLD` is no longer needed.
 
@@ -154,27 +154,27 @@ class RecommendResponse(pydantic.BaseModel):
 ## LLM Configuration
 
 The agent is constructed with `model=settings.llm_model` where `settings` is a `pydantic-settings` `Settings`
-object reading from environment variables. Default: `"openai:gpt-4o"`. Any pydantic-ai–supported model string
+object reading from environment variables. Default: `"cerebras:llama3.1-8b"`. Any pydantic-ai–supported model string
 works (e.g. `"anthropic:claude-haiku-4-5"`, `"ollama:llama3"`).
 
 ```bash
-export LLM_MODEL="openai:gpt-4o"
-export OPENAI_API_KEY="sk-..."
+export LLM_MODEL="cerebras:llama3.1-8b"
+export CEREBRAS_API_KEY="..."
 ```
 
 ---
 
-## BentoML Service
+## FastAPI Service
 
-`agentic_rec/service.py` defines a `@bentoml.service` with:
+`agentic_rec/app.py` defines a FastAPI app with:
 
 - `POST /recommend` accepting `RecommendRequest`, returning `RecommendResponse`
-- Dependencies: `LanceIndex` (loaded once on startup), `Settings` (from env)
+- Dependencies: `LanceIndex` (loaded once on startup)
 
 Run with:
 
 ```bash
-uv run bentoml serve agentic_rec.service:RecommenderService
+uv run fastapi run agentic_rec.app:app
 ```
 
 ---

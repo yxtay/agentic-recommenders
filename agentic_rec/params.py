@@ -16,4 +16,4 @@ RERANKER_NAME = "lightonai/LateOn"
 RERANKER_TYPE = "pylate"
 
 # llm
-LLM_MODEL = "openai:gpt-4o"
+LLM_MODEL = "cerebras:llama3.1-8b"

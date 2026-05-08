@@ -48,6 +48,16 @@ IndexDep = Annotated[LanceIndex, Depends(get_index)]
 UsersDep = Annotated[datasets.Dataset, Depends(get_users)]
 
 
+@app.get("/health")
+async def health(index: IndexDep, users: UsersDep) -> dict:
+    return {
+        "status": "ok",
+        "index_ready": index.table is not None,
+        "num_items": index.table.count_rows() if index.table else 0,
+        "num_users": len(users),
+    }
+
+
 @app.get("/info")
 async def get_info() -> InfoResponse:
     return InfoResponse(
@@ -106,3 +116,37 @@ async def recommend_item_id(
     item = await get_item(item_id, index)
     request = RecommendRequest.model_validate({**item.model_dump(), "limit": limit})
     return await recommend_item(request, index)
+
+
+def main() -> None:
+    """Sanity check: hit each route with the TestClient."""
+    from http import HTTPStatus
+
+    import rich
+    from fastapi.testclient import TestClient
+
+    client = TestClient(app)
+
+    rich.print("[bold]GET /health[/bold]")
+    resp = client.get("/health")
+    rich.print(resp.json())
+    assert resp.status_code == HTTPStatus.OK
+
+    rich.print("\n[bold]GET /info[/bold]")
+    resp = client.get("/info")
+    rich.print(resp.json())
+    assert resp.status_code == HTTPStatus.OK
+
+    rich.print("\n[bold]GET /users/1[/bold]")
+    resp = client.get("/users/1")
+    rich.print(resp.json())
+    assert resp.status_code == HTTPStatus.OK
+
+    rich.print("\n[bold]GET /items/1[/bold]")
+    resp = client.get("/items/1")
+    rich.print(resp.json())
+    assert resp.status_code == HTTPStatus.OK
+
+
+if __name__ == "__main__":
+    main()

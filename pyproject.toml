@@ -38,6 +38,7 @@ dev = [
 data = "agentic_rec.data:main"
 index = "agentic_rec.index:main"
 agent = "agentic_rec.agent:main"
+app = "agentic_rec.app:main"
 
 [tool.uv.sources]
 torch = [{ index = "torch-cpu" }]

@@ -31,12 +31,13 @@ if TYPE_CHECKING:
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     app.state.index = LanceIndex.load(LanceIndexConfig())
-    app.state.users = datasets.Dataset.from_parquet(settings.users_parquet)
+    users = datasets.Dataset.from_parquet(settings.users_parquet)
+    app.state.users_by_id = {row["id"]: row for row in users}
     app.state.llm_ready = await check_llm()
     logger.info(
         "app ready: {} items, {} users, llm_ready={}",
         app.state.index.table.count_rows(),
-        len(app.state.users),
+        len(app.state.users_by_id),
         app.state.llm_ready,
     )
     yield
@@ -49,22 +50,22 @@ def get_index() -> LanceIndex:
     return app.state.index
 
 
-def get_users() -> datasets.Dataset:
-    return app.state.users
+def get_users_by_id() -> dict[str, dict]:
+    return app.state.users_by_id
 
 
 IndexDep = Annotated[LanceIndex, Depends(get_index)]
-UsersDep = Annotated[datasets.Dataset, Depends(get_users)]
+UsersDep = Annotated[dict[str, dict], Depends(get_users_by_id)]
 
 
 @app.get("/healthz")
 @logger.catch(reraise=True)
-async def healthz(index: IndexDep, users: UsersDep) -> dict:
+async def healthz(index: IndexDep, users_by_id: UsersDep) -> dict:
     return {
         "status": "ok",
         "index_ready": index.table is not None,
         "num_items": index.table.count_rows() if index.table else 0,
-        "num_users": len(users),
+        "num_users": len(users_by_id),
         "llm_ready": app.state.llm_ready,
     }
 
@@ -101,19 +102,19 @@ async def recommend_item(
 
 @app.get("/users/{user_id}")
 @logger.catch(reraise=True)
-async def get_user(user_id: str, users: UsersDep) -> UserResponse:
-    filtered = users.filter(lambda row: row["id"] == user_id)
-    if len(filtered) == 0:
+async def get_user(user_id: str, users_by_id: UsersDep) -> UserResponse:
+    user = users_by_id.get(user_id)
+    if user is None:
         raise HTTPException(status_code=404, detail=f"User {user_id} not found")
-    return UserResponse.model_validate(filtered[0])
+    return UserResponse.model_validate(user)
 
 
 @app.post("/users/{user_id}/recommend")
 @logger.catch(reraise=True)
 async def recommend_user_id(
-    user_id: str, users: UsersDep, index: IndexDep, limit: int = 10
+    user_id: str, users_by_id: UsersDep, index: IndexDep, limit: int = 10
 ) -> RecommendResponse:
-    user = await get_user(user_id, users)
+    user = await get_user(user_id, users_by_id)
     user.history = user.history[-20:]
     request = RecommendRequest.model_validate({**user.model_dump(), "limit": limit})
     return await recommend(request, index)

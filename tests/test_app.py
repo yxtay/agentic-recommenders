@@ -10,7 +10,7 @@ import datasets
 import pytest
 from fastapi.testclient import TestClient
 
-from agentic_rec.app import app, get_index, get_users
+from agentic_rec.app import app, get_index, get_users_by_id
 from agentic_rec.models import RankedItem, RecommendResponse
 
 
@@ -24,23 +24,21 @@ def mock_index() -> MagicMock:
 
 
 @pytest.fixture
-def mock_users() -> datasets.Dataset:
-    return datasets.Dataset.from_dict(
-        {
-            "id": ["1"],
-            "text": ["25-year-old male, software engineer"],
+def mock_users_by_id() -> dict[str, dict]:
+    return {
+        "1": {
+            "id": "1",
+            "text": "25-year-old male, software engineer",
             "history": [
-                [
-                    {
-                        "item_id": "42",
-                        "event_datetime": "2024-01-01T00:00:00",
-                        "event_name": "rating",
-                        "event_value": 5.0,
-                    }
-                ]
+                {
+                    "item_id": "42",
+                    "event_datetime": "2024-01-01T00:00:00",
+                    "event_name": "rating",
+                    "event_value": 5.0,
+                }
             ],
         }
-    )
+    }
 
 
 @pytest.fixture
@@ -57,9 +55,11 @@ def mock_agent_response() -> RecommendResponse:
 
 
 @pytest.fixture
-def client(mock_index: MagicMock, mock_users: datasets.Dataset) -> Iterator[TestClient]:
+def client(
+    mock_index: MagicMock, mock_users_by_id: dict[str, dict]
+) -> Iterator[TestClient]:
     app.dependency_overrides[get_index] = lambda: mock_index
-    app.dependency_overrides[get_users] = lambda: mock_users
+    app.dependency_overrides[get_users_by_id] = lambda: mock_users_by_id
     yield TestClient(app)
     app.dependency_overrides.clear()
 

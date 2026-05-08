@@ -145,6 +145,10 @@ def main(limit: int = 5) -> None:
     import rich
     from fastapi.testclient import TestClient
 
+    import agentic_rec.index
+
+    agentic_rec.index.main(overwrite=False)
+
     with TestClient(app, raise_server_exceptions=False) as client:
         rich.print("[bold]GET /healthz[/bold]")
         resp = client.get("/healthz")

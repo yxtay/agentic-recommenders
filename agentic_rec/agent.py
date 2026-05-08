@@ -113,7 +113,7 @@ def main(limit: int = 5) -> None:
     index = LanceIndex(LanceIndexConfig())
     try:
         index.open_table()
-    except FileNotFoundError:
+    except ValueError:
         dataset = datasets.Dataset.from_parquet(ITEMS_PARQUET)
         index.index_data(dataset)
 

@@ -189,7 +189,13 @@ def main(
 
     config = LanceIndexConfig(lancedb_path=lancedb_path, table_name=table_name)
     index = LanceIndex(config)
-    index.index_data(dataset, overwrite=overwrite)
+    if overwrite:
+        index.index_data(dataset, overwrite=overwrite)
+    else:
+        try:
+            index.open_table()
+        except ValueError:
+            index.index_data(dataset)
 
     sample_id = dataset.shuffle()[0]["id"]
     item = index.get_ids([sample_id])

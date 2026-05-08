@@ -8,7 +8,7 @@ import pydantic_ai
 from pydantic_ai import RunContext
 
 from agentic_rec.models import ItemCandidate, RecommendRequest, RecommendResponse
-from agentic_rec.params import ITEMS_PARQUET, LLM_MODEL, USERS_PARQUET
+from agentic_rec.params import LLM_MODEL, USERS_PARQUET
 
 if TYPE_CHECKING:
     from agentic_rec.index import LanceIndex
@@ -105,17 +105,12 @@ def main(limit: int = 5) -> None:
     import datasets
     import rich
 
-    import agentic_rec.data
     import agentic_rec.index
     from agentic_rec.index import LanceIndex, LanceIndexConfig
 
-    agentic_rec.data.main(overwrite=False)
+    agentic_rec.index.main(overwrite=False)
     index = LanceIndex(LanceIndexConfig())
-    try:
-        index.open_table()
-    except ValueError:
-        dataset = datasets.Dataset.from_parquet(ITEMS_PARQUET)
-        index.index_data(dataset)
+    index.open_table()
 
     users_dataset = datasets.Dataset.from_parquet(USERS_PARQUET)
     sample_user = users_dataset.shuffle()[0]

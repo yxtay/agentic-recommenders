@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime
+import datetime
 from unittest.mock import MagicMock
 
 import datasets
@@ -32,24 +32,25 @@ def mock_index() -> MagicMock:
 
 @pytest.fixture
 def sample_request() -> RecommendRequest:
-    return RecommendRequest(
-        text="25-year-old male, enjoys sci-fi and thriller films",
-        history=[
+    request = {
+        "text": "25-year-old male, enjoys sci-fi and thriller films",
+        "history": [
             {
                 "item_id": "1",
-                "event_datetime": datetime(2024, 1, 1, tzinfo=UTC),
+                "event_datetime": datetime.datetime(2024, 1, 1, tzinfo=datetime.UTC),
                 "event_name": "rating",
                 "event_value": 5.0,
             },
             {
                 "item_id": "2",
-                "event_datetime": datetime(2024, 1, 2, tzinfo=UTC),
+                "event_datetime": datetime.datetime(2024, 1, 2, tzinfo=datetime.UTC),
                 "event_name": "rating",
                 "event_value": 3.0,
             },
         ],
-        limit=5,
-    )
+        "limit": 5,
+    }
+    return RecommendRequest.model_validate(request)
 
 
 class TestAgentStructure:

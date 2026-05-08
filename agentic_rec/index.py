@@ -30,6 +30,7 @@ class LanceIndexConfig(pydantic.BaseModel):
 
 class LanceIndex:
     def __init__(self, config: LanceIndexConfig) -> None:
+        """Initialize index with config; call open_table() or index_data() to activate."""
         super().__init__()
         self.config = config
         self.table: lancedb.table.Table | None = None
@@ -68,15 +69,18 @@ class LanceIndex:
         )
 
     def save(self, path: str) -> None:
+        """Copy the LanceDB directory to the given path."""
         shutil.copytree(self.config.lancedb_path, path)
 
     @classmethod
     def load(cls, config: LanceIndexConfig) -> LanceIndex:
+        """Create an index and open the existing table."""
         index = cls(config)
         index.open_table()
         return index
 
     def open_table(self) -> lancedb.table.Table:
+        """Connect to LanceDB and open the configured table."""
         db = lancedb.connect(self.config.lancedb_path)
         self.table = db.open_table(self.config.table_name)
         logger.info(f"{self.__class__.__name__}: {self.table}")
@@ -88,6 +92,7 @@ class LanceIndex:
     def index_data(
         self, dataset: datasets.Dataset, *, overwrite: bool = False
     ) -> lancedb.table.Table:
+        """Embed dataset and create table with scalar, FTS, and vector indices."""
         if self.table is not None and not overwrite:
             return self.table
 
@@ -137,6 +142,7 @@ class LanceIndex:
         exclude_ids: list[str] | None = None,
         limit: int = 20,
     ) -> datasets.Dataset:
+        """Hybrid vector + FTS search with reranking, returning scored results."""
         assert self.table is not None
 
         query = (
@@ -155,6 +161,7 @@ class LanceIndex:
         )  # type: ignore[arg-type]
 
     def get_ids(self, ids: list[str]) -> datasets.Dataset:
+        """Look up rows by ID list using the scalar index."""
         assert self.table is not None
 
         if not ids:
@@ -172,6 +179,7 @@ def main(
     *,
     overwrite: bool = True,
 ) -> None:
+    """Build the LanceDB index from parquet and run a sample search."""
     import random
 
     import rich

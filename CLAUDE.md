@@ -105,7 +105,8 @@ See `docs/superpowers/specs/2026-05-07-arag-request-redesign.md` for full spec.
 
 ### LLM configuration
 
-Set `LLM_MODEL` (any pydantic-ai model string, default `cerebras:llama3.1-8b`) and the matching API key env var before serving.
+Set `AGENTIC_REC_LLM_MODEL` (any pydantic-ai model string, default `cerebras:llama3.1-8b`) and the matching
+API key env var before serving.
 
 ## Key conventions
 

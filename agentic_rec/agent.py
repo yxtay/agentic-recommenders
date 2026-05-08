@@ -91,7 +91,11 @@ def get_item_texts(
     ctx: RunContext[AgentDeps],
     item_ids: list[str],
 ) -> dict[str, str]:
-    """Look up item texts for the given item IDs."""
+    """Look up the full text descriptions for items by their IDs.
+
+    Use this to understand what items the user has interacted with
+    before generating search queries.
+    """
     logger.info("get_item_texts: {} ids", len(item_ids))
     dataset = ctx.deps.index.get_ids(item_ids)
     logger.info("get_item_texts: {} results", len(dataset))
@@ -109,7 +113,11 @@ def search_items(
     exclude_ids: list[str] | None = None,
     limit: int = 20,
 ) -> list[ItemCandidate]:
-    """Search for items matching the query using hybrid vector + full-text search."""
+    """Search for candidate items using hybrid vector + full-text search.
+
+    Call multiple times with diverse queries to maximize coverage.
+    Pass exclude_ids to avoid recommending items the user has already seen.
+    """
     dataset = ctx.deps.index.search(query, exclude_ids=exclude_ids, limit=limit)
     logger.info("search_items: {} results", len(dataset))
     return _item_candidate_adapter.validate_python(dataset.to_list())

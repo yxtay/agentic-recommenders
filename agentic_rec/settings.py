@@ -25,14 +25,17 @@ class Settings(BaseSettings):
 
     @property
     def items_parquet(self) -> str:
+        """Path to processed items parquet file."""
         return f"{self.data_dir}/ml-1m/items.parquet"
 
     @property
     def users_parquet(self) -> str:
+        """Path to processed users parquet file."""
         return f"{self.data_dir}/ml-1m/users.parquet"
 
     @property
     def events_parquet(self) -> str:
+        """Path to processed events parquet file."""
         return f"{self.data_dir}/ml-1m/events.parquet"
 
 

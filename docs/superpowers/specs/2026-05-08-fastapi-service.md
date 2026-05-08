@@ -21,12 +21,12 @@ Item-based recommendations reuse the same agent flow in cold-start mode: the ite
 |--------|------------------------------|------------------------------------------------------------------|
 | `GET`  | `/healthz`                   | Service readiness (index, users, LLM status)                     |
 | `GET`  | `/info`                      | Return model configuration (embedder, reranker, LLM)             |
-| `POST` | `/recommend`                 | Recommend items given full user context (text + history + limit)  |
-| `POST` | `/recommend/item`            | Recommend items given item context (cold-start mode)              |
-| `GET`  | `/users/{user_id}`           | Retrieve a user record (text + history) from users parquet        |
-| `POST` | `/users/{user_id}/recommend` | Fetch user by ID, run agent with their context                    |
-| `GET`  | `/items/{item_id}`           | Retrieve an item record (id + text) from the items index          |
-| `POST` | `/items/{item_id}/recommend` | Fetch item text, run agent in cold-start mode                     |
+| `POST` | `/recommend`                 | Recommend items given full user context (text + history + limit) |
+| `POST` | `/recommend/item`            | Recommend items given item context (cold-start mode)             |
+| `GET`  | `/users/{user_id}`           | Retrieve a user record (text + history) from users parquet       |
+| `POST` | `/users/{user_id}/recommend` | Fetch user by ID, run agent with their context                   |
+| `GET`  | `/items/{item_id}`           | Retrieve an item record (id + text) from the items index         |
+| `POST` | `/items/{item_id}/recommend` | Fetch item text, run agent in cold-start mode                    |
 
 ---
 

@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING, Annotated
 
 import datasets
+import pandas as pd
 from fastapi import Depends, FastAPI, HTTPException
 from loguru import logger
 
@@ -31,13 +32,15 @@ if TYPE_CHECKING:
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     app.state.index = LanceIndex.load(LanceIndexConfig())
-    users = datasets.Dataset.from_parquet(settings.users_parquet)
-    app.state.users_by_id = {row["id"]: row for row in users}
+    app.state.users = datasets.Dataset.from_parquet(settings.users_parquet)
+    app.state.userid2idx = pd.Series(
+        pd.RangeIndex(len(app.state.users)), index=app.state.users["id"]
+    )
     app.state.llm_ready = await check_llm()
     logger.info(
         "app ready: {} items, {} users, llm_ready={}",
         app.state.index.table.count_rows(),
-        len(app.state.users_by_id),
+        len(app.state.users),
         app.state.llm_ready,
     )
     yield
@@ -50,22 +53,27 @@ def get_index() -> LanceIndex:
     return app.state.index
 
 
-def get_users_by_id() -> dict[str, dict]:
-    return app.state.users_by_id
+def get_users() -> datasets.Dataset:
+    return app.state.users
+
+
+def get_userid2idx() -> pd.Series:
+    return app.state.userid2idx
 
 
 IndexDep = Annotated[LanceIndex, Depends(get_index)]
-UsersDep = Annotated[dict[str, dict], Depends(get_users_by_id)]
+UsersDep = Annotated[datasets.Dataset, Depends(get_users)]
+UserId2IdxDep = Annotated[pd.Series, Depends(get_userid2idx)]
 
 
 @app.get("/healthz")
 @logger.catch(reraise=True)
-async def healthz(index: IndexDep, users_by_id: UsersDep) -> dict:
+async def healthz(index: IndexDep, users: UsersDep) -> dict:
     return {
         "status": "ok",
         "index_ready": index.table is not None,
         "num_items": index.table.count_rows() if index.table else 0,
-        "num_users": len(users_by_id),
+        "num_users": len(users),
         "llm_ready": app.state.llm_ready,
     }
 
@@ -82,7 +90,7 @@ async def get_info() -> InfoResponse:
 
 @app.post("/recommend")
 @logger.catch(reraise=True)
-async def recommend(request: RecommendRequest, index: IndexDep) -> RecommendResponse:
+async def recommend(request: RecommendRequest, *, index: IndexDep) -> RecommendResponse:
     deps = AgentDeps(index=index, request=request)
     response = await agent.run(instructions=USER_INSTRUCTIONS, deps=deps)
     logger.info("recommend: {} items", len(response.output.items))
@@ -92,7 +100,7 @@ async def recommend(request: RecommendRequest, index: IndexDep) -> RecommendResp
 @app.post("/recommend/item")
 @logger.catch(reraise=True)
 async def recommend_item(
-    request: RecommendRequest, index: IndexDep
+    request: RecommendRequest, *, index: IndexDep
 ) -> RecommendResponse:
     deps = AgentDeps(index=index, request=request)
     response = await agent.run(instructions=ITEM_INSTRUCTIONS, deps=deps)
@@ -102,27 +110,34 @@ async def recommend_item(
 
 @app.get("/users/{user_id}")
 @logger.catch(reraise=True)
-async def get_user(user_id: str, users_by_id: UsersDep) -> UserResponse:
-    user = users_by_id.get(user_id)
-    if user is None:
+async def get_user(
+    user_id: str, *, users: UsersDep, userid2idx: UserId2IdxDep
+) -> UserResponse:
+    if user_id not in userid2idx:
         raise HTTPException(status_code=404, detail=f"User {user_id} not found")
+    user = users[userid2idx[user_id]]
     return UserResponse.model_validate(user)
 
 
 @app.post("/users/{user_id}/recommend")
 @logger.catch(reraise=True)
 async def recommend_user_id(
-    user_id: str, users_by_id: UsersDep, index: IndexDep, limit: int = 10
+    user_id: str,
+    limit: int = 10,
+    *,
+    users: UsersDep,
+    userid2idx: UserId2IdxDep,
+    index: IndexDep,
 ) -> RecommendResponse:
-    user = await get_user(user_id, users_by_id)
+    user = await get_user(user_id, users=users, userid2idx=userid2idx)
     user.history = user.history[-20:]
     request = RecommendRequest.model_validate({**user.model_dump(), "limit": limit})
-    return await recommend(request, index)
+    return await recommend(request, index=index)
 
 
 @app.get("/items/{item_id}")
 @logger.catch(reraise=True)
-async def get_item(item_id: str, index: IndexDep) -> ItemResponse:
+async def get_item(item_id: str, *, index: IndexDep) -> ItemResponse:
     result = index.get_ids([item_id])
     if len(result) == 0:
         raise HTTPException(status_code=404, detail=f"Item {item_id} not found")
@@ -132,11 +147,11 @@ async def get_item(item_id: str, index: IndexDep) -> ItemResponse:
 @app.post("/items/{item_id}/recommend")
 @logger.catch(reraise=True)
 async def recommend_item_id(
-    item_id: str, index: IndexDep, limit: int = 10
+    item_id: str, limit: int = 10, *, index: IndexDep
 ) -> RecommendResponse:
-    item = await get_item(item_id, index)
+    item = await get_item(item_id, index=index)
     request = RecommendRequest.model_validate({**item.model_dump(), "limit": limit})
-    return await recommend_item(request, index)
+    return await recommend_item(request, index=index)
 
 
 def main(limit: int = 5) -> None:

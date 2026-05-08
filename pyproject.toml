@@ -23,11 +23,12 @@ dependencies = [
   "rerankers[pylate,transformers]>=0.9,<1.0",
   "sentence-transformers~=5.3",
   "sqlalchemy~=2.0",
+  "torch~=2.9",
 ]
 
 [dependency-groups]
 dev = [
-  "huggingface-hub[cli]>=0.35",
+  "huggingface-hub[cli]~=1.14",
   "pyarrow-stubs>=20.0",
   "pytest~=9.0",
   "pytest-asyncio~=1.0",

@@ -65,7 +65,7 @@ COPY agentic_rec agentic_rec
 RUN uv sync --no-default-groups
 
 USER ${USER}
-HEALTHCHECK CMD ["uv", "pip", "list"]
+HEALTHCHECK CMD ["python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
 
 EXPOSE 8000
 ENTRYPOINT ["uv", "run", "serve"]

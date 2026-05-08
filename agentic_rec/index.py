@@ -142,14 +142,14 @@ class LanceIndex:
         self,
         text: str,
         exclude_ids: list[str] | None = None,
-        top_k: int = 20,
+        limit: int = 20,
     ) -> datasets.Dataset:
         assert self.table is not None
 
         query = (
             self.table.search(text, query_type="hybrid")
             .rerank(self.reranker)
-            .limit(top_k)
+            .limit(limit)
         )
 
         if exclude_ids:
@@ -196,7 +196,7 @@ def main(
     rich.print(item.select_columns(["id", "text"])[0])
 
     text = item["text"][0]
-    results = index.search(text, exclude_ids=[sample_id], top_k=5)
+    results = index.search(text, exclude_ids=[sample_id], limit=5)
     rich.print(results.select_columns(["id", "text", "score"]).to_list())
 
 

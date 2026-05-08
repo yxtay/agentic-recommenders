@@ -84,14 +84,14 @@ Steps:
 
 Returns `lancedb.table.Table`.
 
-### `search(text, exclude_ids, top_k)`
+### `search(text, exclude_ids, limit)`
 
 ```python
 def search(
     self,
     text: str,
     exclude_ids: list[str] | None = None,
-    top_k: int = 20,
+    limit: int = 20,
 ) -> datasets.Dataset:
 ```
 
@@ -113,7 +113,7 @@ Steps:
     query = (
         table.search(text, query_type="hybrid")
         .rerank(reranker)
-        .limit(top_k)
+        .limit(limit)
     )
     if filter_str:
         query = query.where(filter_str, prefilter=True)

@@ -67,7 +67,7 @@ and answerdotai reranker — each loaded once on first access. Key methods:
 - `index_data(dataset, overwrite=False)` — creates the table from a `datasets.Dataset` with `id` and `text`
   columns; builds scalar index on `id`, FTS index on `text`, and `IVF_RQ` vector index. `vector` is
   auto-embedded if absent.
-- `search(text, exclude_ids, top_k)` — hybrid (vector + FTS) search with answerdotai reranker; `exclude_ids`
+- `search(text, exclude_ids, limit)` — hybrid (vector + FTS) search with answerdotai reranker; `exclude_ids`
   filter built via `sqlalchemy` (injection safety). Returns a `datasets.Dataset` with columns `id`, `text`,
   `vector`, `score`.
 - `get_ids(ids)` — scalar-indexed point lookup by ID list.
@@ -92,7 +92,7 @@ Module-level `pydantic_ai.Agent` singleton with `AgentDeps` (index + request) fo
 Callers use `agent.run(instructions=DOMAIN_INSTRUCTIONS, deps=AgentDeps(...))` directly.
 
 Request accepts `text` (required), `history` (list of interactions, defaults to `[]`),
-and `top_k` (default 10). Cold-start (empty history) is handled by the agent using `text`
+and `limit` (default 10). Cold-start (empty history) is handled by the agent using `text`
 alone for retrieval.
 
 See `docs/superpowers/specs/2026-05-07-arag-request-redesign.md` for full spec.

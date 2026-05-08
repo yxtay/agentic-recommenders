@@ -23,7 +23,7 @@ The system is served via a BentoML REST endpoint.
 ## Architecture
 
 ```text
-Request (text, history: [{item_id, event_datetime, event_name, event_value}], top_k)
+Request (text, history: [{item_id, event_datetime, event_name, event_value}], limit)
     │
     ├─ [Tool 1] get_item_texts(item_ids)    → {item_id: item_text}  (skipped if cold-start)
     ├─ LLM: context understanding           → preference summary
@@ -91,7 +91,7 @@ curl -X POST http://localhost:3000/recommend \
       {"item_id": "1193", "event_datetime": "2000-12-31T22:12:40", "event_name": "rating", "event_value": 5},
       {"item_id": "661",  "event_datetime": "2000-12-31T22:35:09", "event_name": "rating", "event_value": 3}
     ],
-    "top_k": 10
+    "limit": 10
   }'
 ```
 

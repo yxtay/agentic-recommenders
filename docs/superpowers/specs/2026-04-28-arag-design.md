@@ -19,7 +19,7 @@ for diversity, then ranks candidates with per-item explanations.
 ## Architecture
 
 ```text
-Request (text, history: list[{item_id, event_datetime, event_name, event_value}], top_k)
+Request (text, history: list[{item_id, event_datetime, event_name, event_value}], limit)
     │
     ├─ [Tool 1] fetch_item_texts(item_ids)  ← skipped if history is empty
     │           Looks up item_text in LanceDB by item_id.
@@ -31,7 +31,7 @@ Request (text, history: list[{item_id, event_datetime, event_name, event_value}]
     │           natural-language preference summary. Weights revealed behavior
     │           over stated preferences when they conflict.
     │
-    ├─ [Tool 2] retrieve_candidates(query, top_k, exclude_item_ids)  ← called N times
+    ├─ [Tool 2] retrieve_candidates(query, limit, exclude_item_ids)  ← called N times
     │           Hybrid search (vector + FTS) on LanceDB items table.
     │           Interacted item_ids are always excluded.
     │           Agent issues multiple queries for diversity, e.g.:
@@ -94,7 +94,7 @@ The agent may call `retrieve_candidates` multiple times:
 | Item text of a recent, high-value interaction               | Fast, anchored signal           |
 | Generated hypothetical item text from context understanding | When history is sparse or stale |
 
-The agent should limit `top_k` per call (e.g. 20) and issue 2–4 calls to ensure diversity. Candidates are
+The agent should limit `limit` per call (e.g. 20) and issue 2–4 calls to ensure diversity. Candidates are
 deduplicated by `item_id` across calls, keeping the highest retrieval score.
 
 All interacted `item_id`s are passed as `exclude_item_ids` on every call.
@@ -130,7 +130,7 @@ class RankedItem(pydantic.BaseModel):
 class RecommendRequest(pydantic.BaseModel):
     text: str
     history: list[Interaction] = []
-    top_k: int = 10
+    limit: int = 10
 
 class RecommendResponse(pydantic.BaseModel):
     items: list[RankedItem]

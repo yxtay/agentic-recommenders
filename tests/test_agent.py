@@ -48,7 +48,7 @@ def sample_request() -> RecommendRequest:
                 "event_value": 3.0,
             },
         ],
-        top_k=5,
+        limit=5,
     )
 
 
@@ -88,9 +88,9 @@ class TestSearchItemsTool:
         ctx = MagicMock()
         ctx.deps = AgentDeps(index=mock_index, request=sample_request)
 
-        result = tool.function(ctx, query="sci-fi action", exclude_ids=["1"], top_k=10)
+        result = tool.function(ctx, query="sci-fi action", exclude_ids=["1"], limit=10)
         mock_index.search.assert_called_once_with(
-            "sci-fi action", exclude_ids=["1"], top_k=10
+            "sci-fi action", exclude_ids=["1"], limit=10
         )
         assert len(result) == 2  # noqa: PLR2004
         assert all(isinstance(item, ItemCandidate) for item in result)

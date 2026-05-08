@@ -25,7 +25,7 @@ class Interaction(pydantic.BaseModel):
 class RecommendRequest(pydantic.BaseModel):
     text: str                  # user demographics / stated preferences
     history: list[Interaction] = [] # past interactions, may be empty
-    top_k: int = 10
+    limit: int = 10
 
 class RankedItem(pydantic.BaseModel):
     item_id: str
@@ -42,7 +42,7 @@ class RecommendResponse(pydantic.BaseModel):
 |----------------|-------------|-------------------------------|
 | `interactions` | `history`   | Renamed; now defaults to `[]` |
 | —              | `text`      | New required field            |
-| `top_k`        | `top_k`     | Unchanged                     |
+| `limit`        | `limit`     | Unchanged                     |
 
 ---
 
@@ -51,7 +51,7 @@ class RecommendResponse(pydantic.BaseModel):
 ### Normal case (history is non-empty)
 
 ```text
-Request (text, history, top_k)
+Request (text, history, limit)
     │
     ├─ [Tool 1] get_ids(item_ids from history)
     │           → {item_id: item_text} for interacted items
@@ -74,7 +74,7 @@ Request (text, history, top_k)
 ### Cold-start case (history is empty)
 
 ```text
-Request (text, history=[], top_k)
+Request (text, history=[], limit)
     │
     ├─ Tool 1 skipped (no items to look up)
     │
@@ -116,7 +116,7 @@ instructs the agent to:
     {"item_id": "1193", "event_datetime": "2000-12-31T22:12:40", "event_name": "rating", "event_value": 5},
     {"item_id": "661",  "event_datetime": "2000-12-31T22:35:09", "event_name": "rating", "event_value": 3}
   ],
-  "top_k": 10
+  "limit": 10
 }
 ```
 
@@ -126,7 +126,7 @@ Cold-start example:
 {
   "text": "35-year-old female, teacher, loves romantic comedies and drama",
   "history": [],
-  "top_k": 10
+  "limit": 10
 }
 ```
 

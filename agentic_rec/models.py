@@ -27,7 +27,7 @@ class RankedItem(pydantic.BaseModel):
 class RecommendRequest(pydantic.BaseModel):
     text: str
     history: list[Interaction] = []
-    top_k: int = 10
+    limit: int = 10
 
 
 class RecommendResponse(pydantic.BaseModel):

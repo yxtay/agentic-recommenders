@@ -112,22 +112,22 @@ class TestSQLFilters:
 
 class TestSearch:
     def test_returns_dataset(self, indexed_index: LanceIndex) -> None:
-        result = indexed_index.search("comedy film about love", top_k=5)
+        result = indexed_index.search("comedy film about love", limit=5)
         assert isinstance(result, datasets.Dataset)
 
-    def test_top_k_respected(self, indexed_index: LanceIndex) -> None:
-        result = indexed_index.search("drama about adventure", top_k=5)
+    def test_limit_respected(self, indexed_index: LanceIndex) -> None:
+        result = indexed_index.search("drama about adventure", limit=5)
         assert len(result) <= 5  # noqa: PLR2004
 
     def test_exclude_ids(self, indexed_index: LanceIndex) -> None:
-        result = indexed_index.search("comedy", exclude_ids=["0", "1", "2"], top_k=10)
+        result = indexed_index.search("comedy", exclude_ids=["0", "1", "2"], limit=10)
         returned_ids = result["id"]
         assert "0" not in returned_ids
         assert "1" not in returned_ids
         assert "2" not in returned_ids
 
     def test_no_exclude_ids_returns_results(self, indexed_index: LanceIndex) -> None:
-        result = indexed_index.search("love story", top_k=5)
+        result = indexed_index.search("love story", limit=5)
         assert len(result) > 0
 
 

@@ -27,7 +27,7 @@ You receive a JSON object with:
 - text: user demographics and stated preferences
 - history: list of past interactions (may be empty), each with item_id, event_datetime, \
 event_name, event_value
-- top_k: number of items to recommend
+- limit: number of items to recommend
 
 Workflow:
 
@@ -44,7 +44,7 @@ Workflow:
 
 3. Cold-start: if history is empty, skip get_item_texts and rely solely on text.
 
-4. Ranking with explanations: from all candidates, select the top_k items.
+4. Ranking with explanations: from all candidates, select the limit items.
     Rank by relevance and diversity.
     For each item, provide a concise one-sentence explanation of why it suits the user.
 
@@ -83,10 +83,10 @@ def search_items(
     ctx: RunContext[AgentDeps],
     query: str,
     exclude_ids: list[str] | None = None,
-    top_k: int = 20,
+    limit: int = 20,
 ) -> list[ItemCandidate]:
     """Search for items matching the query using hybrid vector + full-text search."""
-    dataset = ctx.deps.index.search(query, exclude_ids=exclude_ids, top_k=top_k)
+    dataset = ctx.deps.index.search(query, exclude_ids=exclude_ids, limit=limit)
     return _item_candidate_adapter.validate_python(dataset.to_list())
 
 
@@ -96,7 +96,7 @@ Vary queries by genre, mood, era, and director style for diversity.
 """
 
 
-def main(top_k: int = 5) -> None:
+def main(limit: int = 5) -> None:
     """Sanity check: sample a user from parquet and run recommendation."""
     import asyncio
 
@@ -111,10 +111,10 @@ def main(top_k: int = 5) -> None:
 
     users_dataset = datasets.Dataset.from_parquet(USERS_PARQUET)
     sample_user = users_dataset.shuffle()[0]
-    request = RecommendRequest.model_validate({**sample_user, "top_k": top_k})
+    request = RecommendRequest.model_validate({**sample_user, "limit": limit})
     logger.info("sampled user: {}", request.text)
     logger.info(
-        "request: {} interactions, top_k={}", len(request.history), request.top_k
+        "request: {} interactions, limit={}", len(request.history), request.limit
     )
 
     index = LanceIndex.load(LanceIndexConfig())

@@ -3,7 +3,7 @@
 **Date:** 2026-04-28
 **Paper:**
 [ARAG: Agentic Retrieval Augmented Generation for Personalized Recommendation](https://arxiv.org/abs/2506.21931)
-**Stack:** pydantic-ai, lancedb, sentence-transformers, datasets, BentoML, Polars
+**Stack:** pydantic-ai, lancedb, sentence-transformers, datasets, FastAPI, Polars
 
 ---
 
@@ -19,23 +19,25 @@ for diversity, then ranks candidates with per-item explanations.
 ## Architecture
 
 ```text
-Request (interactions: list[{event_timestamp, event_name, event_value, item_id}], top_k)
+Request (text, history: list[{item_id, event_datetime, event_name, event_value}], limit)
     │
-    ├─ [Tool 1] fetch_item_texts(item_ids)
+    ├─ [Tool 1] fetch_item_texts(item_ids)  ← skipped if history is empty
     │           Looks up item_text in LanceDB by item_id.
     │           Returns {item_id: item_text} for all interacted items.
     │
     ├─ Agent generates context understanding (no tool call):
-    │           Using interaction details (timestamp, event_name, event_value)
-    │           and retrieved item texts, the agent produces a natural-language
-    │           preference summary with emphasis on recently interacted items.
+    │           Using text, interaction details (timestamp, event_name,
+    │           event_value), and retrieved item texts, the agent produces a
+    │           natural-language preference summary. Weights revealed behavior
+    │           over stated preferences when they conflict.
     │
-    ├─ [Tool 2] retrieve_candidates(query, top_k, exclude_item_ids)  ← called N times
+    ├─ [Tool 2] retrieve_candidates(query, limit, exclude_item_ids)  ← called N times
     │           Hybrid search (vector + FTS) on LanceDB items table.
     │           Interacted item_ids are always excluded.
     │           Agent issues multiple queries for diversity, e.g.:
     │             • item_text of a recent highly-rated interaction
     │             • a hypothetical item text generated from context understanding
+    │             • text-derived query (stated genre/style preferences)
     │           → List[ItemCandidate] (deduplicated across calls)
     │
     └─ Agent ranks and explains (no tool call):
@@ -45,25 +47,31 @@ Request (interactions: list[{event_timestamp, event_name, event_value, item_id}]
                 interaction, a detected preference, etc.).
                 Returns RecommendResponse.
 
-BentoML /recommend → RecommendResponse(items: list[RankedItem])
+POST /recommend → RecommendResponse(items: list[RankedItem])
 ```
 
 ---
 
 ## Data Flow
 
-### Input interactions
+### Input
 
-The caller supplies a list of past interactions; no user profile lookup is needed:
+The caller supplies `text` (demographics/preferences) and an optional `history` of past interactions:
 
-| Field             | Type       | Description                               |
-|-------------------|------------|-------------------------------------------|
-| `item_id`         | `str`      | Interacted item                           |
-| `event_timestamp` | `datetime` | When the interaction occurred             |
-| `event_name`      | `str`      | Interaction type (e.g. `"rating"`)        |
-| `event_value`     | `float`    | Strength of interaction (e.g. 1–5 rating) |
+**`text`** (str, required): natural-language description of user demographics and stated preferences
+(e.g. "25-year-old male, software engineer, enjoys sci-fi and thriller films").
 
-Interactions are sorted by `event_timestamp` descending before being passed to the agent so that recency is preserved.
+**`history`** (list, defaults to `[]`): past interactions. Each interaction has:
+
+| Field            | Type       | Description                               |
+|------------------|------------|-------------------------------------------|
+| `item_id`        | `str`      | Interacted item                           |
+| `event_datetime` | `datetime` | When the interaction occurred             |
+| `event_name`     | `str`      | Interaction type (e.g. `"rating"`)        |
+| `event_value`    | `float`    | Strength of interaction (e.g. 1–5 rating) |
+
+When history is non-empty, interactions are sorted by `event_datetime` descending so recency is preserved.
+When history is empty (cold-start), the agent uses `text` as the sole signal for retrieval and ranking.
 
 ### Context understanding (between Tool 1 and Tool 2)
 
@@ -86,7 +94,7 @@ The agent may call `retrieve_candidates` multiple times:
 | Item text of a recent, high-value interaction               | Fast, anchored signal           |
 | Generated hypothetical item text from context understanding | When history is sparse or stale |
 
-The agent should limit `top_k` per call (e.g. 20) and issue 2–4 calls to ensure diversity. Candidates are
+The agent should limit `limit` per call (e.g. 20) and issue 2–4 calls to ensure diversity. Candidates are
 deduplicated by `item_id` across calls, keeping the highest retrieval score.
 
 All interacted `item_id`s are passed as `exclude_item_ids` on every call.
@@ -105,7 +113,7 @@ produce the final ranked output. The ranking should:
 ```python
 class Interaction(pydantic.BaseModel):
     item_id: str
-    event_timestamp: datetime
+    event_datetime: datetime
     event_name: str
     event_value: float
 
@@ -120,8 +128,9 @@ class RankedItem(pydantic.BaseModel):
     explanation: str  # one sentence, references past interaction or preference
 
 class RecommendRequest(pydantic.BaseModel):
-    interactions: list[Interaction]
-    top_k: int = 10
+    text: str
+    history: list[Interaction] = []
+    limit: int = 10
 
 class RecommendResponse(pydantic.BaseModel):
     items: list[RankedItem]
@@ -131,12 +140,12 @@ class RecommendResponse(pydantic.BaseModel):
 
 ## Modules
 
-| File                     | Responsibility                                                            |
-|--------------------------|---------------------------------------------------------------------------|
-| `agentic_rec/agent.py`   | `Agent` definition, system prompt, two tools, pydantic result types       |
-| `agentic_rec/index.py`   | `LanceIndex` with `get_ids` (for Tool 1) and `search` hybrid (for Tool 2) |
-| `agentic_rec/service.py` | BentoML `Service` wrapping the agent; `/recommend` POST endpoint          |
-| `agentic_rec/params.py`  | `LLM_MODEL` constant (default `"openai:gpt-4o"`)                          |
+| File                    | Responsibility                                                            |
+|-------------------------|---------------------------------------------------------------------------|
+| `agentic_rec/agent.py`  | `Agent` definition, system prompt, two tools, pydantic result types       |
+| `agentic_rec/index.py`  | `LanceIndex` with `get_ids` (for Tool 1) and `search` hybrid (for Tool 2) |
+| `agentic_rec/app.py`    | FastAPI app wrapping the agent; `/recommend` POST endpoint                |
+| `agentic_rec/params.py` | `LLM_MODEL` constant                                                      |
 
 `data.py` is unchanged. `NLI_THRESHOLD` is no longer needed.
 
@@ -145,27 +154,27 @@ class RecommendResponse(pydantic.BaseModel):
 ## LLM Configuration
 
 The agent is constructed with `model=settings.llm_model` where `settings` is a `pydantic-settings` `Settings`
-object reading from environment variables. Default: `"openai:gpt-4o"`. Any pydantic-ai–supported model string
+object reading from environment variables. Default: `"cerebras:llama3.1-8b"`. Any pydantic-ai–supported model string
 works (e.g. `"anthropic:claude-haiku-4-5"`, `"ollama:llama3"`).
 
 ```bash
-export LLM_MODEL="openai:gpt-4o"
-export OPENAI_API_KEY="sk-..."
+export LLM_MODEL="cerebras:llama3.1-8b"
+export CEREBRAS_API_KEY="..."
 ```
 
 ---
 
-## BentoML Service
+## FastAPI Service
 
-`agentic_rec/service.py` defines a `@bentoml.service` with:
+`agentic_rec/app.py` defines a FastAPI app with:
 
 - `POST /recommend` accepting `RecommendRequest`, returning `RecommendResponse`
-- Dependencies: `LanceIndex` (loaded once on startup), `Settings` (from env)
+- Dependencies: `LanceIndex` (loaded once on startup)
 
 Run with:
 
 ```bash
-uv run bentoml serve agentic_rec.service:RecommenderService
+uv run fastapi run agentic_rec.app:app
 ```
 
 ---
@@ -178,7 +187,7 @@ Before serving, items must be embedded and indexed into LanceDB:
 uv run index   # CLI entry point in pyproject.toml
 ```
 
-This loads `data/ml-1m/items.parquet`, encodes `item_text` with sentence-transformers (`all-MiniLM-L6-v2`),
+This loads `data/ml-1m/items.parquet`, encodes `item_text` with sentence-transformers (`lightonai/DenseOn`),
 and calls `LanceIndex.index_data()`.
 
 ---
@@ -187,8 +196,8 @@ and calls `LanceIndex.index_data()`.
 
 - **Two tools, not five**: removes NLI scoring and context summarisation as separate tool calls. Context
   understanding and ranking are agent reasoning steps, not tool calls, which reduces latency and round-trips.
-- **Input is interactions, not user_id**: caller supplies the interaction list directly; no server-side user
-  profile store is required.
+- **Input is text + history, not user_id**: caller supplies demographics/preferences and interaction
+  history directly; no server-side user profile store is required. Supports cold-start (empty history).
 - **Multi-query retrieval for diversity**: agent issues 2–4 hybrid search calls with different query strategies
   rather than a single large retrieval. Deduplication happens client-side.
 - **Hypothetical item text**: when recent history alone is a poor query signal, the agent generates a synthetic

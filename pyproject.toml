@@ -12,8 +12,8 @@ authors = [
 license = "MIT"
 requires-python = ">=3.12,<4"
 dependencies = [
-  "bentoml~=1.3",
   "datasets~=4.0",
+  "fastapi[standard]>=0.136,<1.0",
   "jsonargparse[signatures]~=4.48",
   "lancedb[pylance]>=0.19,<1.0",
   "loguru>=0.7,<1.0",
@@ -23,14 +23,21 @@ dependencies = [
   "rerankers[pylate,transformers]>=0.9,<1.0",
   "sentence-transformers~=5.3",
   "sqlalchemy~=2.0",
+  "torch~=2.9",
 ]
 
 [dependency-groups]
-dev = ["huggingface-hub[cli]>=0.35", "pyarrow-stubs>=20.0", "pytest~=9.0"]
+dev = [
+  "huggingface-hub[cli]~=1.14",
+  "pyarrow-stubs>=20.0",
+  "pytest~=9.0",
+  "pytest-asyncio~=1.0",
+]
 
 [project.scripts]
 data = "agentic_rec.data:main"
 index = "agentic_rec.index:main"
+agent = "agentic_rec.agent:main"
 
 [tool.uv.sources]
 torch = [{ index = "torch-cpu" }]

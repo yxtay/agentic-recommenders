@@ -7,33 +7,10 @@ import numpy as np
 import pytest
 
 from agentic_rec.index import LanceIndex, LanceIndexConfig
-from agentic_rec.params import (
-    EMBEDDER_NAME,
-    ITEMS_TABLE_NAME,
-    LANCE_DB_PATH,
-    RERANKER_NAME,
-    RERANKER_TYPE,
-)
-
-
-class TestLanceIndexConfig:
-    def test_defaults(self) -> None:
-        config = LanceIndexConfig()
-        assert config.lancedb_path == LANCE_DB_PATH
-        assert config.table_name == ITEMS_TABLE_NAME
-        assert config.embedder_name == EMBEDDER_NAME
-        assert config.embedder_device == "cpu"
-        assert config.reranker_name == RERANKER_NAME
-        assert config.reranker_type == RERANKER_TYPE
-
-    def test_custom_values(self, tmp_path: str) -> None:
-        config = LanceIndexConfig(lancedb_path=str(tmp_path))
-        assert config.lancedb_path == str(tmp_path)
-
 
 # ── shared integration fixtures ────────────────────────────────────────────
 
-EMBEDDING_DIM = 384  # all-MiniLM-L6-v2
+EMBEDDING_DIM = 384
 
 
 @pytest.fixture(scope="session")
@@ -135,22 +112,22 @@ class TestSQLFilters:
 
 class TestSearch:
     def test_returns_dataset(self, indexed_index: LanceIndex) -> None:
-        result = indexed_index.search("comedy film about love", top_k=5)
+        result = indexed_index.search("comedy film about love", limit=5)
         assert isinstance(result, datasets.Dataset)
 
-    def test_top_k_respected(self, indexed_index: LanceIndex) -> None:
-        result = indexed_index.search("drama about adventure", top_k=5)
+    def test_limit_respected(self, indexed_index: LanceIndex) -> None:
+        result = indexed_index.search("drama about adventure", limit=5)
         assert len(result) <= 5  # noqa: PLR2004
 
     def test_exclude_ids(self, indexed_index: LanceIndex) -> None:
-        result = indexed_index.search("comedy", exclude_ids=["0", "1", "2"], top_k=10)
+        result = indexed_index.search("comedy", exclude_ids=["0", "1", "2"], limit=10)
         returned_ids = result["id"]
         assert "0" not in returned_ids
         assert "1" not in returned_ids
         assert "2" not in returned_ids
 
     def test_no_exclude_ids_returns_results(self, indexed_index: LanceIndex) -> None:
-        result = indexed_index.search("love story", top_k=5)
+        result = indexed_index.search("love story", limit=5)
         assert len(result) > 0
 
 

@@ -44,11 +44,13 @@ def download_data(
     # download zip
     if not dest.exists() or overwrite:
         logger.info("downloading data: {}", url)
-        with tempfile.NamedTemporaryFile(delete=False) as f:
-            with httpx.stream("GET", url) as resp:
-                resp.raise_for_status()
-                for chunk in resp.iter_bytes():
-                    f.write(chunk)
+        with (
+            httpx.stream("GET", url) as resp,
+            tempfile.NamedTemporaryFile(delete=False) as f,
+        ):
+            resp.raise_for_status()
+            for chunk in resp.iter_bytes():
+                f.write(chunk)
         shutil.move(f.name, dest)
 
     logger.info("data downloaded: {}", dest)
@@ -459,17 +461,6 @@ def process_users(
         )
         .with_columns(
             pl.col(col).list.sort().alias(col) for col in ["history", "target"]
-        )
-        .with_columns(
-            pl.struct(
-                pl.col(col)
-                .list.eval(  # devskim: ignore DS189424
-                    pl.element().struct.field(field)
-                )
-                .alias(field)
-                for field in activity_cols
-            ).alias(col)
-            for col in ["history", "target"]
         )
     )
     users_processed = (

@@ -14,7 +14,6 @@ from loguru import logger
 from sqlalchemy import column, literal
 
 from agentic_rec.params import (
-    DATA_DIR,
     EMBEDDER_NAME,
     ITEMS_PARQUET,
     ITEMS_TABLE_NAME,
@@ -81,10 +80,10 @@ class LanceIndex:
     @classmethod
     def load(cls, config: LanceIndexConfig) -> LanceIndex:
         index = cls(config)
-        index._open_table()
+        index.open_table()
         return index
 
-    def _open_table(self) -> lancedb.table.Table:
+    def open_table(self) -> lancedb.table.Table:
         db = lancedb.connect(self.config.lancedb_path)
         self.table = db.open_table(self.config.table_name)
         logger.info(f"{self.__class__.__name__}: {self.table}")
@@ -143,14 +142,14 @@ class LanceIndex:
         self,
         text: str,
         exclude_ids: list[str] | None = None,
-        top_k: int = 20,
+        limit: int = 20,
     ) -> datasets.Dataset:
         assert self.table is not None
 
         query = (
             self.table.search(text, query_type="hybrid")
             .rerank(self.reranker)
-            .limit(top_k)
+            .limit(limit)
         )
 
         if exclude_ids:
@@ -177,30 +176,34 @@ def main(
     parquet_path: str = ITEMS_PARQUET,
     table_name: str = ITEMS_TABLE_NAME,
     lancedb_path: str = LANCE_DB_PATH,
-    data_dir: str = DATA_DIR,
     *,
     overwrite: bool = True,
 ) -> None:
+    import rich
+
     import agentic_rec.data
 
-    agentic_rec.data.main(data_dir=data_dir, overwrite=False)
+    agentic_rec.data.main(overwrite=False)
     dataset = datasets.Dataset.from_parquet(parquet_path)
     logger.info("dataset loaded: {}, shape: {}", parquet_path, dataset.shape)
 
     config = LanceIndexConfig(lancedb_path=lancedb_path, table_name=table_name)
     index = LanceIndex(config)
-    index.index_data(dataset, overwrite=overwrite)
+    if overwrite:
+        index.index_data(dataset, overwrite=overwrite)
+    else:
+        try:
+            index.open_table()
+        except ValueError:
+            index.index_data(dataset)
 
     sample_id = dataset.shuffle()[0]["id"]
     item = index.get_ids([sample_id])
-    logger.info("get_ids result: {}", item.select_columns(["id", "text"])[0])
+    rich.print(item.select_columns(["id", "text"])[0])
 
     text = item["text"][0]
-    results = index.search(text, exclude_ids=[sample_id], top_k=5)
-    logger.info(
-        "search results: {}",
-        results.select_columns(["id", "text", "score"]).to_list(),
-    )
+    results = index.search(text, exclude_ids=[sample_id], limit=5)
+    rich.print(results.select_columns(["id", "text", "score"]).to_list())
 
 
 if __name__ == "__main__":

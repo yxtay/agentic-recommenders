@@ -47,7 +47,9 @@ RUN apt-get update && \
     && rm -rf /var/lib/apt/lists/*
 
 ARG PYTHONDONTWRITEBYTECODE=1
+ARG UV_LOCKED=1
 ARG UV_NO_CACHE=1
+ARG UV_NO_SYNC=1
 
 # set up python
 COPY --from=uv /uv /uvx /bin/

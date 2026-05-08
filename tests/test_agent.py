@@ -6,9 +6,8 @@ from unittest.mock import MagicMock
 import datasets
 import pytest
 
-from agentic_rec.agent import agent
+from agentic_rec.agent import AgentDeps, agent
 from agentic_rec.models import (
-    AgentDeps,
     ItemCandidate,
     RecommendRequest,
     RecommendResponse,
@@ -95,5 +94,5 @@ class TestSearchItemsTool:
         )
         assert len(result) == 2  # noqa: PLR2004
         assert all(isinstance(item, ItemCandidate) for item in result)
-        assert result[0].item_id == "3"
+        assert result[0].id == "3"
         assert result[0].score == pytest.approx(0.9)

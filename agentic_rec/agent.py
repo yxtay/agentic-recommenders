@@ -1,10 +1,24 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
+from typing import TYPE_CHECKING
+
+import pydantic
 import pydantic_ai
 from pydantic_ai import RunContext
 
-from agentic_rec.models import AgentDeps, ItemCandidate, RecommendResponse
+from agentic_rec.models import ItemCandidate, RecommendRequest, RecommendResponse
 from agentic_rec.params import LLM_MODEL, USERS_PARQUET
+
+if TYPE_CHECKING:
+    from agentic_rec.index import LanceIndex
+
+
+@dataclass
+class AgentDeps:
+    index: LanceIndex
+    request: RecommendRequest
+
 
 SYSTEM_PROMPT = """\
 You are a personalized item recommender.
@@ -61,6 +75,9 @@ def get_item_texts(
     return {row["id"]: row["text"] for row in dataset}
 
 
+_item_candidate_adapter = pydantic.TypeAdapter(list[ItemCandidate])
+
+
 @agent.tool
 def search_items(
     ctx: RunContext[AgentDeps],
@@ -70,10 +87,7 @@ def search_items(
 ) -> list[ItemCandidate]:
     """Search for items matching the query using hybrid vector + full-text search."""
     dataset = ctx.deps.index.search(query, exclude_ids=exclude_ids, top_k=top_k)
-    return [
-        ItemCandidate(item_id=row["id"], item_text=row["text"], score=row["score"])
-        for row in dataset
-    ]
+    return _item_candidate_adapter.validate_python(dataset.to_list())
 
 
 MOVIE_INSTRUCTIONS = """\
@@ -92,7 +106,6 @@ def main(top_k: int = 5) -> None:
 
     import agentic_rec.index
     from agentic_rec.index import LanceIndex, LanceIndexConfig
-    from agentic_rec.models import RecommendRequest
 
     agentic_rec.index.main(overwrite=False)
 

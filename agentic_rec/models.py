@@ -1,13 +1,8 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 from datetime import datetime  # noqa: TC003
-from typing import TYPE_CHECKING
 
 import pydantic
-
-if TYPE_CHECKING:
-    from agentic_rec.index import LanceIndex
 
 
 class Interaction(pydantic.BaseModel):
@@ -18,14 +13,14 @@ class Interaction(pydantic.BaseModel):
 
 
 class ItemCandidate(pydantic.BaseModel):
-    item_id: str
-    item_text: str
+    id: str
+    text: str
     score: float = 0.0
 
 
 class RankedItem(pydantic.BaseModel):
-    item_id: str
-    item_text: str
+    id: str
+    text: str
     explanation: str
 
 
@@ -37,9 +32,3 @@ class RecommendRequest(pydantic.BaseModel):
 
 class RecommendResponse(pydantic.BaseModel):
     items: list[RankedItem]
-
-
-@dataclass
-class AgentDeps:
-    index: LanceIndex
-    request: RecommendRequest

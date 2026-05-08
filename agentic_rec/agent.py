@@ -53,6 +53,12 @@ Workflow:
 Return a RecommendResponse with the ranked list of items.
 """
 
+
+INSTRUCTIONS = """\
+You are recommending movies. Items are films described by title and genres.
+Vary queries by genre, mood, era, and director style for diversity.
+"""
+
 agent: pydantic_ai.Agent[AgentDeps, RecommendResponse] = pydantic_ai.Agent(
     model=LLM_MODEL,
     system_prompt=SYSTEM_PROMPT,
@@ -92,12 +98,6 @@ def search_items(
     return _item_candidate_adapter.validate_python(dataset.to_list())
 
 
-MOVIE_INSTRUCTIONS = """\
-You are recommending movies. Items are films described by title and genres.
-Vary queries by genre, mood, era, and director style for diversity.
-"""
-
-
 def main(limit: int = 5) -> None:
     """Sanity check: sample a user from parquet and run recommendation."""
     import asyncio
@@ -110,23 +110,22 @@ def main(limit: int = 5) -> None:
     from agentic_rec.index import LanceIndex, LanceIndexConfig
 
     agentic_rec.data.main(overwrite=False)
-    index_config = LanceIndexConfig()
+    index = LanceIndex(LanceIndexConfig())
     try:
-        index = LanceIndex.load(index_config)
+        index.open_table()
     except FileNotFoundError:
         dataset = datasets.Dataset.from_parquet(ITEMS_PARQUET)
-        index = LanceIndex(index_config)
         index.index_data(dataset)
 
     users_dataset = datasets.Dataset.from_parquet(USERS_PARQUET)
     sample_user = users_dataset.shuffle()[0]
     request = RecommendRequest.model_validate({**sample_user, "limit": limit})
-    request.history = request.history[-20:]
+    request.history = request.history[-30:]
     rich.print(request)
 
     deps = AgentDeps(index=index, request=request)
-    response = asyncio.run(agent.run(instructions=MOVIE_INSTRUCTIONS, deps=deps))
-    rich.print(response.output)
+    response = asyncio.run(agent.run(instructions=INSTRUCTIONS, deps=deps))
+    rich.print(response.output.items)
 
 
 if __name__ == "__main__":

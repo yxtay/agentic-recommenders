@@ -80,10 +80,10 @@ class LanceIndex:
     @classmethod
     def load(cls, config: LanceIndexConfig) -> LanceIndex:
         index = cls(config)
-        index._open_table()
+        index.open_table()
         return index
 
-    def _open_table(self) -> lancedb.table.Table:
+    def open_table(self) -> lancedb.table.Table:
         db = lancedb.connect(self.config.lancedb_path)
         self.table = db.open_table(self.config.table_name)
         logger.info(f"{self.__class__.__name__}: {self.table}")

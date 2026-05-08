@@ -89,6 +89,7 @@ async def get_info() -> InfoResponse:
 
 
 @app.post("/recommend")
+@app.post("/recommend/user")
 @logger.catch(reraise=True)
 async def recommend(request: RecommendRequest, *, index: IndexDep) -> RecommendResponse:
     deps = AgentDeps(index=index, request=request)

@@ -32,3 +32,20 @@ class RecommendRequest(pydantic.BaseModel):
 
 class RecommendResponse(pydantic.BaseModel):
     items: list[RankedItem]
+
+
+class UserResponse(pydantic.BaseModel):
+    id: str
+    text: str
+    history: list[Interaction] = []
+
+
+class ItemResponse(pydantic.BaseModel):
+    id: str
+    text: str
+
+
+class InfoResponse(pydantic.BaseModel):
+    embedder_name: str
+    reranker_name: str
+    llm_model: str

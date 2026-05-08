@@ -24,7 +24,7 @@ SYSTEM_PROMPT = """\
 You are a personalized item recommender.
 
 You receive a JSON object with:
-- text: user demographics and stated preferences
+- text: context description (user profile or item description, depending on the task)
 - history: list of past interactions (may be empty), each with item_id, event_datetime, \
 event_name, event_value
 - limit: number of items to recommend
@@ -37,7 +37,7 @@ Workflow:
     emphasizing recent and highly-rated interactions.
 
 2. Candidate retrieval: call search_items 2-4 times with diverse queries.
-    - Derive queries from the user's taste profile.
+    - Derive queries from the context and taste profile.
     - Use the text field directly as one query if it contains useful preference signals.
     - Exclude already-interacted item IDs from all search calls.
     - Aim for diversity: vary query angles.
@@ -46,17 +46,28 @@ Workflow:
 
 4. Ranking with explanations: from all candidates, select the limit items.
     Rank by relevance and diversity.
-    For each item, provide a concise explanation of why it is recommended,
-    referencing specific preferences or past interactions when possible.
+    For each item, provide a concise explanation of why it is recommended.
     Use short explanations such as "Similar to...", "Matches your interest in...", etc.
 
 Return a RecommendResponse with the ranked list of items.
 """
 
 
-INSTRUCTIONS = """\
-You are recommending movies. Items are films described by title and genres.
+USER_INSTRUCTIONS = """\
+You are recommending movies for a user.
+Items are films described by title and genres.
+The text field contains user demographics and stated preferences.
+Use history and text to understand taste.
 Vary queries by genre, mood, era, and director style for diversity.
+"""
+
+ITEM_INSTRUCTIONS = """\
+You are recommending movies similar to a given movie.
+Items are films described by title and genres.
+The text field contains the source movie's title and genres.
+Find diverse but related films that someone who liked this movie would enjoy.
+There is no interaction history.
+Vary queries by genre, mood, era, and thematic similarity for diversity.
 """
 
 agent: pydantic_ai.Agent[AgentDeps, RecommendResponse] = pydantic_ai.Agent(
@@ -119,7 +130,7 @@ def main(limit: int = 5) -> None:
     rich.print(request)
 
     deps = AgentDeps(index=index, request=request)
-    response = asyncio.run(agent.run(instructions=INSTRUCTIONS, deps=deps))
+    response = asyncio.run(agent.run(instructions=USER_INSTRUCTIONS, deps=deps))
     rich.print(response.output.items)
 
 

@@ -55,7 +55,7 @@ LLM directly (no separate tool calls). Served via FastAPI.
 | `agentic_rec/index.py`    | LanceDB item index: embedding, hybrid search, reranking             |
 | `agentic_rec/models.py`   | Pydantic models: request/response types                             |
 | `agentic_rec/agent.py`    | pydantic-ai `Agent` singleton with tools                            |
-| `agentic_rec/app.py`      | FastAPI `POST /recommend` endpoint _(planned)_                      |
+| `agentic_rec/app.py`      | FastAPI service: `/recommend`, `/users`, `/items`, `/info` routes   |
 
 ### Data columns
 

@@ -51,10 +51,7 @@ jobs:
 
       - run: uv run pytest
 
-      - run: uv run agent
-
-      - if: ${{ failure() }}
-        run: uv run index
+      - run: uv run index
 
       - if: ${{ failure() }}
         run: uv run data
@@ -96,7 +93,12 @@ jobs:
         env:
           IMAGE_ID: ${{ steps.build.outputs.imageid }}
 
-      - run: ${DOCKER_RUN_CMD} "${IMAGE_ID}" uv run index
+      - run: ${DOCKER_RUN_CMD} "${IMAGE_ID}" uv run agent
+        env:
+          IMAGE_ID: ${{ steps.build.outputs.imageid }}
+
+      - if: ${{ failure() }}
+        run: ${DOCKER_RUN_CMD} "${IMAGE_ID}" uv run index
         env:
           IMAGE_ID: ${{ steps.build.outputs.imageid }}
 

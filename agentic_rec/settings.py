@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from pydantic import computed_field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -24,17 +23,14 @@ class Settings(BaseSettings):
     # llm
     llm_model: str = "cerebras:llama3.1-8b"
 
-    @computed_field  # type: ignore[prop-decorator]
     @property
     def items_parquet(self) -> str:
         return f"{self.data_dir}/ml-1m/items.parquet"
 
-    @computed_field  # type: ignore[prop-decorator]
     @property
     def users_parquet(self) -> str:
         return f"{self.data_dir}/ml-1m/users.parquet"
 
-    @computed_field  # type: ignore[prop-decorator]
     @property
     def events_parquet(self) -> str:
         return f"{self.data_dir}/ml-1m/events.parquet"

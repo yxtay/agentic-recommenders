@@ -79,21 +79,6 @@ agent: pydantic_ai.Agent[AgentDeps, RecommendResponse] = pydantic_ai.Agent(
 )
 
 
-async def check_llm() -> bool:
-    """Verify the LLM API key is set and valid."""
-    try:
-        test_agent: pydantic_ai.Agent[None, str] = pydantic_ai.Agent(
-            model=settings.llm_model, output_type=str
-        )
-        await test_agent.run("Say hi")
-    except (OSError, ValueError, RuntimeError):
-        logger.exception("llm check: failed ({})", settings.llm_model)
-        return False
-    else:
-        logger.info("llm check: ok ({})", settings.llm_model)
-        return True
-
-
 @agent.instructions
 def user_context(ctx: RunContext[AgentDeps]) -> str:
     """Serialize the request as JSON for the agent to interpret."""
@@ -101,6 +86,7 @@ def user_context(ctx: RunContext[AgentDeps]) -> str:
 
 
 @agent.tool
+@logger.catch(reraise=True)
 def get_item_texts(
     ctx: RunContext[AgentDeps],
     item_ids: list[str],
@@ -116,6 +102,7 @@ _item_candidate_adapter = pydantic.TypeAdapter(list[ItemCandidate])
 
 
 @agent.tool
+@logger.catch(reraise=True)
 def search_items(
     ctx: RunContext[AgentDeps],
     query: str,
@@ -126,6 +113,21 @@ def search_items(
     dataset = ctx.deps.index.search(query, exclude_ids=exclude_ids, limit=limit)
     logger.info("search_items: {} results", len(dataset))
     return _item_candidate_adapter.validate_python(dataset.to_list())
+
+
+async def check_llm() -> bool:
+    """Verify the LLM API key is set and valid."""
+    try:
+        test_agent: pydantic_ai.Agent[None, str] = pydantic_ai.Agent(
+            model=settings.llm_model, output_type=str
+        )
+        await test_agent.run("Say hi")
+    except (OSError, ValueError, RuntimeError):
+        logger.exception("llm check: failed ({})", settings.llm_model)
+        return False
+    else:
+        logger.info("llm check: ok ({})", settings.llm_model)
+        return True
 
 
 def main(limit: int = 5) -> None:

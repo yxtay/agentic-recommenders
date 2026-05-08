@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Annotated
 
 import datasets
 from fastapi import Depends, FastAPI, HTTPException
+from loguru import logger
 
 from agentic_rec.agent import (
     ITEM_INSTRUCTIONS,
@@ -30,6 +31,11 @@ if TYPE_CHECKING:
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     app.state.index = LanceIndex.load(LanceIndexConfig())
     app.state.users = datasets.Dataset.from_parquet(settings.users_parquet)
+    logger.info(
+        "app ready: {} items, {} users",
+        app.state.index.table.count_rows(),
+        len(app.state.users),
+    )
     yield
 
 
@@ -49,6 +55,7 @@ UsersDep = Annotated[datasets.Dataset, Depends(get_users)]
 
 
 @app.get("/health")
+@logger.catch(reraise=True)
 async def health(index: IndexDep, users: UsersDep) -> dict:
     return {
         "status": "ok",
@@ -59,6 +66,7 @@ async def health(index: IndexDep, users: UsersDep) -> dict:
 
 
 @app.get("/info")
+@logger.catch(reraise=True)
 async def get_info() -> InfoResponse:
     return InfoResponse(
         embedder_name=settings.embedder_name,
@@ -68,22 +76,27 @@ async def get_info() -> InfoResponse:
 
 
 @app.post("/recommend")
+@logger.catch(reraise=True)
 async def recommend(request: RecommendRequest, index: IndexDep) -> RecommendResponse:
     deps = AgentDeps(index=index, request=request)
     response = await agent.run(instructions=USER_INSTRUCTIONS, deps=deps)
+    logger.info("recommend: {} items", len(response.output.items))
     return response.output
 
 
 @app.post("/recommend/item")
+@logger.catch(reraise=True)
 async def recommend_item(
     request: RecommendRequest, index: IndexDep
 ) -> RecommendResponse:
     deps = AgentDeps(index=index, request=request)
     response = await agent.run(instructions=ITEM_INSTRUCTIONS, deps=deps)
+    logger.info("recommend_item: {} items", len(response.output.items))
     return response.output
 
 
 @app.get("/users/{user_id}")
+@logger.catch(reraise=True)
 async def get_user(user_id: str, users: UsersDep) -> UserResponse:
     filtered = users.filter(lambda row: row["id"] == user_id)
     if len(filtered) == 0:
@@ -92,6 +105,7 @@ async def get_user(user_id: str, users: UsersDep) -> UserResponse:
 
 
 @app.post("/users/{user_id}/recommend")
+@logger.catch(reraise=True)
 async def recommend_user_id(
     user_id: str, users: UsersDep, index: IndexDep, limit: int = 10
 ) -> RecommendResponse:
@@ -102,6 +116,7 @@ async def recommend_user_id(
 
 
 @app.get("/items/{item_id}")
+@logger.catch(reraise=True)
 async def get_item(item_id: str, index: IndexDep) -> ItemResponse:
     result = index.get_ids([item_id])
     if len(result) == 0:
@@ -110,6 +125,7 @@ async def get_item(item_id: str, index: IndexDep) -> ItemResponse:
 
 
 @app.post("/items/{item_id}/recommend")
+@logger.catch(reraise=True)
 async def recommend_item_id(
     item_id: str, index: IndexDep, limit: int = 10
 ) -> RecommendResponse:
@@ -118,34 +134,50 @@ async def recommend_item_id(
     return await recommend_item(request, index)
 
 
-def main() -> None:
+def main(limit: int = 5) -> None:
     """Sanity check: hit each route with the TestClient."""
-    from http import HTTPStatus
+    import random
 
     import rich
     from fastapi.testclient import TestClient
 
-    client = TestClient(app)
+    client = TestClient(app, raise_server_exceptions=False)
 
     rich.print("[bold]GET /health[/bold]")
     resp = client.get("/health")
+    resp.raise_for_status()
     rich.print(resp.json())
-    assert resp.status_code == HTTPStatus.OK
 
     rich.print("\n[bold]GET /info[/bold]")
     resp = client.get("/info")
+    resp.raise_for_status()
     rich.print(resp.json())
-    assert resp.status_code == HTTPStatus.OK
 
-    rich.print("\n[bold]GET /users/1[/bold]")
-    resp = client.get("/users/1")
-    rich.print(resp.json())
-    assert resp.status_code == HTTPStatus.OK
+    users = datasets.Dataset.from_parquet(settings.users_parquet)
+    user_id = random.choice(users["id"])
 
-    rich.print("\n[bold]GET /items/1[/bold]")
-    resp = client.get("/items/1")
+    rich.print(f"\n[bold]GET /users/{user_id}[/bold]")
+    resp = client.get(f"/users/{user_id}")
+    resp.raise_for_status()
     rich.print(resp.json())
-    assert resp.status_code == HTTPStatus.OK
+
+    rich.print(f"\n[bold]POST /users/{user_id}/recommend?limit={limit}[/bold]")
+    resp = client.post(f"/users/{user_id}/recommend?limit={limit}")
+    resp.raise_for_status()
+    rich.print(resp.json())
+
+    items = datasets.Dataset.from_parquet(settings.items_parquet)
+    item_id = random.choice(items["id"])
+
+    rich.print(f"\n[bold]GET /items/{item_id}[/bold]")
+    resp = client.get(f"/items/{item_id}")
+    resp.raise_for_status()
+    rich.print(resp.json())
+
+    rich.print(f"\n[bold]POST /items/{item_id}/recommend?limit={limit}[/bold]")
+    resp = client.post(f"/items/{item_id}/recommend?limit={limit}")
+    resp.raise_for_status()
+    rich.print(resp.json())
 
 
 if __name__ == "__main__":

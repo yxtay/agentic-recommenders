@@ -172,6 +172,8 @@ def main(
     *,
     overwrite: bool = True,
 ) -> None:
+    import random
+
     import rich
 
     import agentic_rec.data
@@ -190,7 +192,7 @@ def main(
         except ValueError:
             index.index_data(dataset)
 
-    sample_id = dataset.shuffle()[0]["id"]
+    sample_id = random.choice(dataset["id"])
     item = index.get_ids([sample_id])
     rich.print(item.select_columns(["id", "text"])[0])
 

@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 
 import pydantic
 import pydantic_ai
+from loguru import logger
 from pydantic_ai import RunContext
 
 from agentic_rec.models import ItemCandidate, RecommendRequest, RecommendResponse
@@ -90,7 +91,9 @@ def get_item_texts(
     item_ids: list[str],
 ) -> dict[str, str]:
     """Look up item texts for the given item IDs."""
+    logger.info("get_item_texts: {} ids", len(item_ids))
     dataset = ctx.deps.index.get_ids(item_ids)
+    logger.info("get_item_texts: {} results", len(dataset))
     return {row["id"]: row["text"] for row in dataset}
 
 
@@ -106,12 +109,14 @@ def search_items(
 ) -> list[ItemCandidate]:
     """Search for items matching the query using hybrid vector + full-text search."""
     dataset = ctx.deps.index.search(query, exclude_ids=exclude_ids, limit=limit)
+    logger.info("search_items: {} results", len(dataset))
     return _item_candidate_adapter.validate_python(dataset.to_list())
 
 
 def main(limit: int = 5) -> None:
     """Sanity check: sample a user from parquet and run recommendation."""
     import asyncio
+    import random
 
     import datasets
     import rich
@@ -124,7 +129,8 @@ def main(limit: int = 5) -> None:
     index.open_table()
 
     users_dataset = datasets.Dataset.from_parquet(settings.users_parquet)
-    sample_user = users_dataset.shuffle()[0]
+    sample_idx = random.randrange(len(users_dataset))
+    sample_user = users_dataset[sample_idx]
     request = RecommendRequest.model_validate({**sample_user, "limit": limit})
     request.history = request.history[-20:]
     rich.print(request)

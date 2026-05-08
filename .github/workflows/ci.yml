@@ -51,7 +51,10 @@ jobs:
 
       - run: uv run pytest
 
-      - run: uv run index
+      - run: uv run agent
+
+      - if: ${{ failure() }}
+        run: uv run index
 
       - if: ${{ failure() }}
         run: uv run data

@@ -57,9 +57,9 @@ IndexDep = Annotated[LanceIndex, Depends(get_index)]
 UsersDep = Annotated[datasets.Dataset, Depends(get_users)]
 
 
-@app.get("/health")
+@app.get("/healthz")
 @logger.catch(reraise=True)
-async def health(index: IndexDep, users: UsersDep) -> dict:
+async def healthz(index: IndexDep, users: UsersDep) -> dict:
     return {
         "status": "ok",
         "index_ready": index.table is not None,
@@ -146,8 +146,8 @@ def main(limit: int = 5) -> None:
     from fastapi.testclient import TestClient
 
     with TestClient(app, raise_server_exceptions=False) as client:
-        rich.print("[bold]GET /health[/bold]")
-        resp = client.get("/health")
+        rich.print("[bold]GET /healthz[/bold]")
+        resp = client.get("/healthz")
         resp.raise_for_status()
         rich.print(resp.json())
 

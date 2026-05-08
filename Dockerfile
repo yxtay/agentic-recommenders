@@ -44,6 +44,7 @@ RUN apt-get update && \
     apt-get install --yes --no-install-recommends \
         build-essential \
         ca-certificates \
+        curl \
     && rm -rf /var/lib/apt/lists/*
 
 ARG PYTHONDONTWRITEBYTECODE=1
@@ -65,7 +66,7 @@ COPY agentic_rec agentic_rec
 RUN uv sync --no-default-groups
 
 USER ${USER}
-HEALTHCHECK CMD ["python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+HEALTHCHECK CMD ["curl", "--fail", "http://localhost:8000/healthz"]
 
 EXPOSE 8000
 ENTRYPOINT ["uv", "run", "serve"]

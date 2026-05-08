@@ -66,3 +66,6 @@ RUN uv sync --no-default-groups
 
 USER ${USER}
 HEALTHCHECK CMD ["uv", "pip", "list"]
+
+EXPOSE 8000
+ENTRYPOINT ["serve"]

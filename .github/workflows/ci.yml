@@ -79,10 +79,7 @@ jobs:
       - if: ${{ github.ref_name != github.event.repository.default_branch }}
         uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
         with:
-          path: |
-            data
-            lance_db
-            ${{ env.HF_HOME }}
+          path: ${{ env.HF_HOME }}
           key: cache-${{ runner.os }}
 
       - uses: docker/setup-qemu-action@ce360397dd3f832beb865e1373c09c0e9f86d70a # v4

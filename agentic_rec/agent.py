@@ -8,7 +8,7 @@ import pydantic_ai
 from pydantic_ai import RunContext
 
 from agentic_rec.models import ItemCandidate, RecommendRequest, RecommendResponse
-from agentic_rec.params import LLM_MODEL, USERS_PARQUET
+from agentic_rec.settings import settings
 
 if TYPE_CHECKING:
     from agentic_rec.index import LanceIndex
@@ -60,7 +60,7 @@ Vary queries by genre, mood, era, and director style for diversity.
 """
 
 agent: pydantic_ai.Agent[AgentDeps, RecommendResponse] = pydantic_ai.Agent(
-    model=LLM_MODEL,
+    model=settings.llm_model,
     system_prompt=SYSTEM_PROMPT,
     output_type=RecommendResponse,
     defer_model_check=True,
@@ -112,7 +112,7 @@ def main(limit: int = 5) -> None:
     index = LanceIndex(LanceIndexConfig())
     index.open_table()
 
-    users_dataset = datasets.Dataset.from_parquet(USERS_PARQUET)
+    users_dataset = datasets.Dataset.from_parquet(settings.users_parquet)
     sample_user = users_dataset.shuffle()[0]
     request = RecommendRequest.model_validate({**sample_user, "limit": limit})
     request.history = request.history[-20:]

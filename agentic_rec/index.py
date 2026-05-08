@@ -13,26 +13,19 @@ import pydantic
 from loguru import logger
 from sqlalchemy import column, literal
 
-from agentic_rec.params import (
-    EMBEDDER_NAME,
-    ITEMS_PARQUET,
-    ITEMS_TABLE_NAME,
-    LANCE_DB_PATH,
-    RERANKER_NAME,
-    RERANKER_TYPE,
-)
+from agentic_rec.settings import settings
 
 if TYPE_CHECKING:
     from lancedb.pydantic import LanceModel
 
 
 class LanceIndexConfig(pydantic.BaseModel):
-    lancedb_path: str = LANCE_DB_PATH
-    table_name: str = ITEMS_TABLE_NAME
-    embedder_name: str = EMBEDDER_NAME
+    lancedb_path: str = settings.lance_db_path
+    table_name: str = settings.items_table_name
+    embedder_name: str = settings.embedder_name
     embedder_device: str = "cpu"
-    reranker_name: str = RERANKER_NAME
-    reranker_type: str = RERANKER_TYPE
+    reranker_name: str = settings.reranker_name
+    reranker_type: str = settings.reranker_type
 
 
 class LanceIndex:
@@ -173,9 +166,9 @@ class LanceIndex:
 
 
 def main(
-    parquet_path: str = ITEMS_PARQUET,
-    table_name: str = ITEMS_TABLE_NAME,
-    lancedb_path: str = LANCE_DB_PATH,
+    parquet_path: str = settings.items_parquet,
+    table_name: str = settings.items_table_name,
+    lancedb_path: str = settings.lance_db_path,
     *,
     overwrite: bool = True,
 ) -> None:

@@ -8,7 +8,7 @@ import pandas as pd
 import polars as pl
 from loguru import logger
 
-from agentic_rec.params import DATA_DIR, MOVIELENS_1M_URL
+from agentic_rec.settings import settings
 
 ###
 # download data
@@ -16,7 +16,10 @@ from agentic_rec.params import DATA_DIR, MOVIELENS_1M_URL
 
 
 def download_data(
-    url: str = MOVIELENS_1M_URL, dest_dir: str = DATA_DIR, *, overwrite: bool = False
+    url: str = settings.movielens_1m_url,
+    dest_dir: str = settings.data_dir,
+    *,
+    overwrite: bool = False,
 ) -> pathlib.Path:
     """Download the MovieLens dataset to a local directory.
 
@@ -88,7 +91,10 @@ def unpack_data(
 
 
 def download_unpack_data(
-    url: str = MOVIELENS_1M_URL, dest_dir: str = DATA_DIR, *, overwrite: bool = False
+    url: str = settings.movielens_1m_url,
+    dest_dir: str = settings.data_dir,
+    *,
+    overwrite: bool = False,
 ) -> list[str]:
     """Download and unpack MovieLens in a single step.
 
@@ -112,7 +118,7 @@ def download_unpack_data(
 ###
 
 
-def load_items(src_dir: str = DATA_DIR) -> pl.LazyFrame:
+def load_items(src_dir: str = settings.data_dir) -> pl.LazyFrame:
     """Read raw MovieLens movie records and return a Polars LazyFrame.
 
     Read the ``movies.dat`` file from ``src_dir`` and return a
@@ -148,7 +154,7 @@ def load_items(src_dir: str = DATA_DIR) -> pl.LazyFrame:
     return items.lazy()
 
 
-def load_users(src_dir: str = DATA_DIR) -> pl.LazyFrame:
+def load_users(src_dir: str = settings.data_dir) -> pl.LazyFrame:
     """Read raw MovieLens user records and return a Polars LazyFrame.
 
     Read ``users.dat`` and construct a JSON ``user_text`` field containing
@@ -192,7 +198,7 @@ def load_users(src_dir: str = DATA_DIR) -> pl.LazyFrame:
     return users.lazy()
 
 
-def load_events(src_dir: str = DATA_DIR) -> pl.LazyFrame:
+def load_events(src_dir: str = settings.data_dir) -> pl.LazyFrame:
     """Read MovieLens rating events and return a Polars LazyFrame.
 
     Read ``ratings.dat`` and convert it to a :class:`polars.LazyFrame` with
@@ -308,7 +314,7 @@ def process_events(
     items: pl.LazyFrame,
     users: pl.LazyFrame,
     *,
-    src_dir: str = DATA_DIR,
+    src_dir: str = settings.data_dir,
     overwrite: bool = False,
 ) -> pl.LazyFrame:
     """Join events with item and user metadata and persist the result as Parquet.
@@ -368,7 +374,7 @@ def process_items(
     items: pl.LazyFrame,
     events: pl.LazyFrame,
     *,
-    src_dir: str = DATA_DIR,
+    src_dir: str = settings.data_dir,
     overwrite: bool = False,
 ) -> pl.LazyFrame:
     """Process item metadata and persist as Parquet.
@@ -413,7 +419,7 @@ def process_users(
     users: pl.LazyFrame,
     events: pl.LazyFrame,
     *,
-    src_dir: str = DATA_DIR,
+    src_dir: str = settings.data_dir,
     overwrite: bool = False,
 ) -> pl.LazyFrame:
     """Aggregate user interactions and persist user-level Parquet.
@@ -475,7 +481,7 @@ def process_users(
 
 
 def prepare_movielens(
-    src_dir: str = DATA_DIR, *, overwrite: bool = False
+    src_dir: str = settings.data_dir, *, overwrite: bool = False
 ) -> pl.LazyFrame:
     """High-level helper to prepare MovieLens artifacts.
 
@@ -500,7 +506,7 @@ def prepare_movielens(
     return events
 
 
-def main(data_dir: str = DATA_DIR, *, overwrite: bool = True) -> None:
+def main(data_dir: str = settings.data_dir, *, overwrite: bool = True) -> None:
     """Command-line entrypoint to prepare the MovieLens dataset.
 
     Downloads and unpacks the dataset, runs the full preprocessing pipeline,

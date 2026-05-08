@@ -67,7 +67,7 @@ uv run index --parquet_path data/ml-1m/users.parquet --table_name users
 ### 3. Configure the LLM
 
 ```bash
-export LLM_MODEL="cerebras:llama3.1-8b"   # any pydantic-ai model string
+export AGENTIC_REC_LLM_MODEL="cerebras:llama3.1-8b"   # any pydantic-ai model string
 export CEREBRAS_API_KEY="..."
 ```
 

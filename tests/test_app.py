@@ -1,13 +1,16 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock, MagicMock, patch
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
 
 import datasets
 import pytest
-import pytest_asyncio
-from httpx import ASGITransport, AsyncClient
+from fastapi.testclient import TestClient
 
-from agentic_rec.app import app
+from agentic_rec.app import app, get_index, get_users
 from agentic_rec.models import RankedItem, RecommendResponse
 
 
@@ -53,23 +56,17 @@ def mock_agent_response() -> RecommendResponse:
     )
 
 
-@pytest.fixture(autouse=True)
-def _setup_app_state(mock_index: MagicMock, mock_users: datasets.Dataset) -> None:
-    app.state.index = mock_index
-    app.state.users = mock_users
-
-
-@pytest_asyncio.fixture
-async def client() -> AsyncClient:
-    transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        yield ac
+@pytest.fixture
+def client(mock_index: MagicMock, mock_users: datasets.Dataset) -> Iterator[TestClient]:
+    app.dependency_overrides[get_index] = lambda: mock_index
+    app.dependency_overrides[get_users] = lambda: mock_users
+    yield TestClient(app)
+    app.dependency_overrides.clear()
 
 
 class TestGetInfo:
-    @pytest.mark.asyncio
-    async def test_returns_model_config(self, client: AsyncClient) -> None:
-        resp = await client.get("/info")
+    def test_returns_model_config(self, client: TestClient) -> None:
+        resp = client.get("/info")
         assert resp.status_code == 200
         data = resp.json()
         assert "embedder_name" in data
@@ -78,49 +75,44 @@ class TestGetInfo:
 
 
 class TestGetUser:
-    @pytest.mark.asyncio
-    async def test_found(self, client: AsyncClient) -> None:
-        resp = await client.get("/users/1")
+    def test_found(self, client: TestClient) -> None:
+        resp = client.get("/users/1")
         assert resp.status_code == 200
         data = resp.json()
         assert data["id"] == "1"
         assert "text" in data
         assert "history" in data
 
-    @pytest.mark.asyncio
-    async def test_not_found(self, client: AsyncClient) -> None:
-        resp = await client.get("/users/999")
+    def test_not_found(self, client: TestClient) -> None:
+        resp = client.get("/users/999")
         assert resp.status_code == 404
 
 
 class TestGetItem:
-    @pytest.mark.asyncio
-    async def test_found(self, client: AsyncClient, mock_index: MagicMock) -> None:
-        resp = await client.get("/items/42")
+    def test_found(self, client: TestClient, mock_index: MagicMock) -> None:
+        resp = client.get("/items/42")
         assert resp.status_code == 200
         data = resp.json()
         assert data["id"] == "42"
         assert "text" in data
         mock_index.get_ids.assert_called_once_with(["42"])
 
-    @pytest.mark.asyncio
-    async def test_not_found(self, client: AsyncClient, mock_index: MagicMock) -> None:
+    def test_not_found(self, client: TestClient, mock_index: MagicMock) -> None:
         mock_index.get_ids.return_value = datasets.Dataset.from_dict(
             {"id": [], "text": []}
         )
-        resp = await client.get("/items/999")
+        resp = client.get("/items/999")
         assert resp.status_code == 404
 
 
 class TestRecommend:
-    @pytest.mark.asyncio
-    async def test_post_recommend(
-        self, client: AsyncClient, mock_agent_response: RecommendResponse
+    def test_post_recommend(
+        self, client: TestClient, mock_agent_response: RecommendResponse
     ) -> None:
         mock_run = AsyncMock()
         mock_run.return_value.output = mock_agent_response
         with patch("agentic_rec.app.agent.run", mock_run):
-            resp = await client.post(
+            resp = client.post(
                 "/recommend",
                 json={"text": "likes sci-fi", "limit": 5},
             )
@@ -131,43 +123,37 @@ class TestRecommend:
 
 
 class TestRecommendUser:
-    @pytest.mark.asyncio
-    async def test_recommend_for_user(
-        self, client: AsyncClient, mock_agent_response: RecommendResponse
+    def test_recommend_for_user(
+        self, client: TestClient, mock_agent_response: RecommendResponse
     ) -> None:
         mock_run = AsyncMock()
         mock_run.return_value.output = mock_agent_response
         with patch("agentic_rec.app.agent.run", mock_run):
-            resp = await client.post("/users/1/recommend?limit=5")
+            resp = client.post("/users/1/recommend?limit=5")
         assert resp.status_code == 200
         data = resp.json()
         assert "items" in data
 
-    @pytest.mark.asyncio
-    async def test_user_not_found(self, client: AsyncClient) -> None:
-        resp = await client.post("/users/999/recommend")
+    def test_user_not_found(self, client: TestClient) -> None:
+        resp = client.post("/users/999/recommend")
         assert resp.status_code == 404
 
 
 class TestRecommendItem:
-    @pytest.mark.asyncio
-    async def test_recommend_for_item(
-        self, client: AsyncClient, mock_agent_response: RecommendResponse
+    def test_recommend_for_item(
+        self, client: TestClient, mock_agent_response: RecommendResponse
     ) -> None:
         mock_run = AsyncMock()
         mock_run.return_value.output = mock_agent_response
         with patch("agentic_rec.app.agent.run", mock_run):
-            resp = await client.post("/items/42/recommend?limit=5")
+            resp = client.post("/items/42/recommend?limit=5")
         assert resp.status_code == 200
         data = resp.json()
         assert "items" in data
 
-    @pytest.mark.asyncio
-    async def test_item_not_found(
-        self, client: AsyncClient, mock_index: MagicMock
-    ) -> None:
+    def test_item_not_found(self, client: TestClient, mock_index: MagicMock) -> None:
         mock_index.get_ids.return_value = datasets.Dataset.from_dict(
             {"id": [], "text": []}
         )
-        resp = await client.post("/items/999/recommend")
+        resp = client.post("/items/999/recommend")
         assert resp.status_code == 404

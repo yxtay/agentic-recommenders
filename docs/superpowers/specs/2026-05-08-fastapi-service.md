@@ -17,14 +17,14 @@ Item-based recommendations reuse the same agent flow in cold-start mode: the ite
 
 ## Routes
 
-| Method | Path | Purpose |
-| ------ | ---- | ------- |
-| `POST` | `/recommend` | Recommend items given full user context (text + history + limit) |
-| `GET` | `/users/{user_id}` | Retrieve a user record (text + history) from users parquet |
-| `POST` | `/users/{user_id}/recommend` | Fetch user by ID, run agent with their context |
-| `GET` | `/items/{item_id}` | Retrieve an item record (id + text) from the items index |
-| `POST` | `/items/{item_id}/recommend` | Fetch item text, run agent in cold-start mode |
-| `GET` | `/info` | Return model configuration (embedder, reranker, LLM) |
+| Method | Path                         | Purpose                                                          |
+|--------|------------------------------|------------------------------------------------------------------|
+| `POST` | `/recommend`                 | Recommend items given full user context (text + history + limit) |
+| `GET`  | `/users/{user_id}`           | Retrieve a user record (text + history) from users parquet       |
+| `POST` | `/users/{user_id}/recommend` | Fetch user by ID, run agent with their context                   |
+| `GET`  | `/items/{item_id}`           | Retrieve an item record (id + text) from the items index         |
+| `POST` | `/items/{item_id}/recommend` | Fetch item text, run agent in cold-start mode                    |
+| `GET`  | `/info`                      | Return model configuration (embedder, reranker, LLM)             |
 
 ---
 
@@ -126,11 +126,11 @@ class InfoResponse(pydantic.BaseModel):
 
 ## Modules Modified
 
-| File | Change |
-| ---- | ------ |
-| `agentic_rec/app.py` | New — FastAPI app with lifespan, all routes |
+| File                    | Change                                             |
+|-------------------------|----------------------------------------------------|
+| `agentic_rec/app.py`    | New — FastAPI app with lifespan, all routes        |
 | `agentic_rec/models.py` | Add `UserResponse`, `ItemResponse`, `InfoResponse` |
-| `tests/test_app.py` | New — route tests with mocked agent/index |
+| `tests/test_app.py`     | New — route tests with mocked agent/index          |
 
 ---
 

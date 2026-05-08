@@ -69,8 +69,8 @@ jobs:
       GHCR_IMAGE_NAME: ghcr.io/${{ github.repository }}
       DOCKER_RUN_CMD: >-
         docker run
-          --env "HF_HOME=/tmp/huggingface"
-          --volume /tmp/huggingface:/tmp/huggingface
+          --env "HF_HOME=${HF_HOME}"
+          --volume ${HF_HOME}:${HF_HOME}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:

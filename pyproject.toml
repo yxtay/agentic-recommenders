@@ -38,6 +38,10 @@ dev = [
 data = "agentic_rec.data:main"
 index = "agentic_rec.index:main"
 agent = "agentic_rec.agent:main"
+app = "agentic_rec.app:main"
+
+[tool.fastapi]
+entrypoint = "agentic_rec.app:app"
 
 [tool.uv.sources]
 torch = [{ index = "torch-cpu" }]
@@ -65,6 +69,9 @@ ignore = [
   "ISC001",  # single-line-implicit-string-concatenation, conflicts with ruff formatter
   "PLC0415", # import-outside-top-level
 ]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["PLR2004"]
 
 [tool.ruff.lint.pycodestyle]
 ignore-overlong-task-comments = true

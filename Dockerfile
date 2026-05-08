@@ -44,6 +44,7 @@ RUN apt-get update && \
     apt-get install --yes --no-install-recommends \
         build-essential \
         ca-certificates \
+        curl \
     && rm -rf /var/lib/apt/lists/*
 
 ARG PYTHONDONTWRITEBYTECODE=1
@@ -65,4 +66,5 @@ COPY agentic_rec agentic_rec
 RUN uv sync --no-default-groups
 
 USER ${USER}
+EXPOSE 8000
 HEALTHCHECK CMD ["uv", "pip", "list"]

@@ -93,7 +93,7 @@ class TestSearchItemsTool:
         mock_index.search.assert_called_once_with(
             "sci-fi action", exclude_ids=["1"], limit=10
         )
-        assert len(result) == 2  # noqa: PLR2004
+        assert len(result) == 2
         assert all(isinstance(item, ItemCandidate) for item in result)
         assert result[0].id == "3"
         assert result[0].score == pytest.approx(0.9)

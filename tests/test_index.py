@@ -117,7 +117,7 @@ class TestSearch:
 
     def test_limit_respected(self, indexed_index: LanceIndex) -> None:
         result = indexed_index.search("drama about adventure", limit=5)
-        assert len(result) <= 5  # noqa: PLR2004
+        assert len(result) <= 5
 
     def test_exclude_ids(self, indexed_index: LanceIndex) -> None:
         result = indexed_index.search("comedy", exclude_ids=["0", "1", "2"], limit=10)

@@ -18,15 +18,15 @@ and uses both signals for retrieval. When history is empty (cold-start), the age
 
 ## File Structure
 
-| File | Responsibility |
-| --- | --- |
-| `agentic_rec/agent.py` (create) | Request/response models, pydantic-ai Agent, two tools, system prompt |
-| `agentic_rec/app.py` (create) | FastAPI service with `/recommend` POST endpoint |
-| `agentic_rec/params.py` (modify) | Add `LLM_MODEL` constant |
-| `tests/test_agent.py` (create) | Unit tests for agent models and tool logic |
-| `tests/test_app.py` (create) | Integration tests for FastAPI endpoint |
-| `README.md` (modify) | Update request examples |
-| `CLAUDE.md` (modify) | Update architecture description |
+| File                             | Responsibility                                                       |
+|----------------------------------|----------------------------------------------------------------------|
+| `agentic_rec/agent.py` (create)  | Request/response models, pydantic-ai Agent, two tools, system prompt |
+| `agentic_rec/app.py` (create)    | FastAPI service with `/recommend` POST endpoint                      |
+| `agentic_rec/params.py` (modify) | Add `LLM_MODEL` constant                                             |
+| `tests/test_agent.py` (create)   | Unit tests for agent models and tool logic                           |
+| `tests/test_app.py` (create)     | Integration tests for FastAPI endpoint                               |
+| `README.md` (modify)             | Update request examples                                              |
+| `CLAUDE.md` (modify)             | Update architecture description                                      |
 
 ---
 

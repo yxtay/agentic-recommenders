@@ -134,14 +134,14 @@ Cold-start example:
 
 ## Files to Modify
 
-| File | Change |
-| --- | --- |
-| `agentic_rec/agent.py` | New request/response models, updated system prompt, flow logic |
-| `agentic_rec/app.py` | Update endpoint to use new `RecommendRequest` |
-| `docs/superpowers/specs/2026-04-28-arag-design.md` | Update structured types and architecture sections |
-| `README.md` | Update request examples |
-| `CLAUDE.md` | Update architecture description if needed |
-| Tests | Add cold-start and normal-case test scenarios |
+| File                                               | Change                                                         |
+|----------------------------------------------------|----------------------------------------------------------------|
+| `agentic_rec/agent.py`                             | New request/response models, updated system prompt, flow logic |
+| `agentic_rec/app.py`                               | Update endpoint to use new `RecommendRequest`                  |
+| `docs/superpowers/specs/2026-04-28-arag-design.md` | Update structured types and architecture sections              |
+| `README.md`                                        | Update request examples                                        |
+| `CLAUDE.md`                                        | Update architecture description if needed                      |
+| Tests                                              | Add cold-start and normal-case test scenarios                  |
 
 ---
 

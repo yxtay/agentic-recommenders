@@ -140,12 +140,12 @@ class RecommendResponse(pydantic.BaseModel):
 
 ## Modules
 
-| File | Responsibility |
-| --- | --- |
-| `agentic_rec/agent.py` | `Agent` definition, system prompt, two tools, pydantic result types |
-| `agentic_rec/index.py` | `LanceIndex` with `get_ids` (for Tool 1) and `search` hybrid (for Tool 2) |
-| `agentic_rec/app.py` | FastAPI app wrapping the agent; `/recommend` POST endpoint |
-| `agentic_rec/params.py` | `LLM_MODEL` constant |
+| File                    | Responsibility                                                            |
+|-------------------------|---------------------------------------------------------------------------|
+| `agentic_rec/agent.py`  | `Agent` definition, system prompt, two tools, pydantic result types       |
+| `agentic_rec/index.py`  | `LanceIndex` with `get_ids` (for Tool 1) and `search` hybrid (for Tool 2) |
+| `agentic_rec/app.py`    | FastAPI app wrapping the agent; `/recommend` POST endpoint                |
+| `agentic_rec/params.py` | `LLM_MODEL` constant                                                      |
 
 `data.py` is unchanged. `NLI_THRESHOLD` is no longer needed.
 

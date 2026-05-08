@@ -48,14 +48,14 @@ LLM directly (no separate tool calls). Served via FastAPI.
 
 ### Modules
 
-| File | Responsibility |
-| --- | --- |
-| `agentic_rec/params.py` | All constants: paths, model names, table names |
-| `agentic_rec/data.py` | MovieLens download, Parquet conversion, train/val/test split |
-| `agentic_rec/index.py` | LanceDB item index: embedding, hybrid search, reranking |
-| `agentic_rec/models.py` | Pydantic models: request/response types |
-| `agentic_rec/agent.py` | pydantic-ai `Agent` singleton with tools |
-| `agentic_rec/app.py` | FastAPI `POST /recommend` endpoint _(planned)_ |
+| File                    | Responsibility                                               |
+|-------------------------|--------------------------------------------------------------|
+| `agentic_rec/params.py` | All constants: paths, model names, table names               |
+| `agentic_rec/data.py`   | MovieLens download, Parquet conversion, train/val/test split |
+| `agentic_rec/index.py`  | LanceDB item index: embedding, hybrid search, reranking      |
+| `agentic_rec/models.py` | Pydantic models: request/response types                      |
+| `agentic_rec/agent.py`  | pydantic-ai `Agent` singleton with tools                     |
+| `agentic_rec/app.py`    | FastAPI `POST /recommend` endpoint _(planned)_               |
 
 ### Data columns
 

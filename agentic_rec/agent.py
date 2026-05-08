@@ -1,56 +1,13 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
-from datetime import datetime  # noqa: TC003
-from typing import TYPE_CHECKING
-
-import pydantic
 import pydantic_ai
 from pydantic_ai import RunContext
 
+from agentic_rec.models import AgentDeps, ItemCandidate, RecommendResponse
 from agentic_rec.params import LLM_MODEL, USERS_PARQUET
 
-if TYPE_CHECKING:
-    from agentic_rec.index import LanceIndex
-
-
-class Interaction(pydantic.BaseModel):
-    item_id: str
-    event_datetime: datetime
-    event_name: str
-    event_value: float
-
-
-class ItemCandidate(pydantic.BaseModel):
-    item_id: str
-    item_text: str
-    score: float = 0.0
-
-
-class RankedItem(pydantic.BaseModel):
-    item_id: str
-    item_text: str
-    explanation: str
-
-
-class RecommendRequest(pydantic.BaseModel):
-    text: str
-    history: list[Interaction] = []
-    top_k: int = 10
-
-
-class RecommendResponse(pydantic.BaseModel):
-    items: list[RankedItem]
-
-
-@dataclass
-class AgentDeps:
-    index: LanceIndex
-    request: RecommendRequest
-
-
 SYSTEM_PROMPT = """\
-You are a personalized movie recommender.
+You are a personalized item recommender.
 
 You receive a JSON object with:
 - text: user demographics and stated preferences
@@ -62,16 +19,16 @@ Workflow:
 
 1. Context understanding:
     If history is not empty, call get_item_texts with all interacted item IDs.
-    Analyze retrieved texts with event values (ratings) to build a preference summary,
+    Analyze retrieved texts with event values to build a preference summary,
     emphasizing recent and highly-rated interactions.
 
 2. Candidate retrieval: call search_items 2-4 times with diverse queries.
-    - Use specific genre/theme queries derived from the user's taste profile.
-    - Use user_text directly as one query if it contains useful preference signals.
+    - Derive queries from the user's taste profile.
+    - Use the text field directly as one query if it contains useful preference signals.
     - Exclude already-interacted item IDs from all search calls.
-    - Aim for diversity: vary query angles (genre, mood, era, director style).
+    - Aim for diversity: vary query angles.
 
-3. Cold-start: if history is empty, skip get_item_texts and rely solely on user_text.
+3. Cold-start: if history is empty, skip get_item_texts and rely solely on text.
 
 4. Ranking with explanations: from all candidates, select the top_k items.
     Rank by relevance and diversity.
@@ -119,17 +76,13 @@ def search_items(
     ]
 
 
-async def recommend(request: RecommendRequest, index: LanceIndex) -> RecommendResponse:
-    """Run the recommendation agent and return ranked items."""
-    deps = AgentDeps(index=index, request=request)
-    result = await agent.run(deps=deps)
-    return result.output
+MOVIE_INSTRUCTIONS = """\
+You are recommending movies. Items are films described by title and genres.
+Vary queries by genre, mood, era, and director style for diversity.
+"""
 
 
-def main(
-    parquet_path: str = USERS_PARQUET,
-    top_k: int = 5,
-) -> None:
+def main(top_k: int = 5) -> None:
     """Sanity check: sample a user from parquet and run recommendation."""
     import asyncio
 
@@ -139,10 +92,11 @@ def main(
 
     import agentic_rec.index
     from agentic_rec.index import LanceIndex, LanceIndexConfig
+    from agentic_rec.models import RecommendRequest
 
     agentic_rec.index.main(overwrite=False)
 
-    users_dataset = datasets.Dataset.from_parquet(parquet_path)
+    users_dataset = datasets.Dataset.from_parquet(USERS_PARQUET)
     sample_user = users_dataset.shuffle()[0]
     request = RecommendRequest.model_validate({**sample_user, "top_k": top_k})
     logger.info("sampled user: {}", request.text)
@@ -151,8 +105,9 @@ def main(
     )
 
     index = LanceIndex.load(LanceIndexConfig())
-    response = asyncio.run(recommend(request, index))
-    rich.print(response)
+    deps = AgentDeps(index=index, request=request)
+    response = asyncio.run(agent.run(instructions=MOVIE_INSTRUCTIONS, deps=deps))
+    rich.print(response.output)
 
 
 if __name__ == "__main__":

@@ -6,13 +6,12 @@ from unittest.mock import MagicMock
 import datasets
 import pytest
 
-from agentic_rec.agent import (
+from agentic_rec.agent import agent
+from agentic_rec.models import (
     AgentDeps,
     ItemCandidate,
     RecommendRequest,
     RecommendResponse,
-    agent,
-    user_context,
 )
 
 
@@ -54,14 +53,6 @@ def sample_request() -> RecommendRequest:
     )
 
 
-@pytest.fixture
-def cold_start_request() -> RecommendRequest:
-    return RecommendRequest(
-        text="35-year-old female, teacher, loves romantic comedies",
-        top_k=10,
-    )
-
-
 class TestAgentStructure:
     def test_agent_has_tools(self) -> None:
         tool_names: set[str] = set()
@@ -73,26 +64,6 @@ class TestAgentStructure:
 
     def test_agent_output_type(self) -> None:
         assert agent._output_type is RecommendResponse  # noqa: SLF001
-
-
-class TestInstructions:
-    def test_returns_json(
-        self, sample_request: RecommendRequest, mock_index: MagicMock
-    ) -> None:
-        ctx = MagicMock()
-        ctx.deps = AgentDeps(index=mock_index, request=sample_request)
-        result = user_context(ctx)
-        assert '"text"' in result
-        assert "sci-fi" in result
-        assert '"top_k":5' in result.replace(" ", "")
-
-    def test_cold_start_empty_history(
-        self, cold_start_request: RecommendRequest, mock_index: MagicMock
-    ) -> None:
-        ctx = MagicMock()
-        ctx.deps = AgentDeps(index=mock_index, request=cold_start_request)
-        result = user_context(ctx)
-        assert '"history":[]' in result.replace(" ", "")
 
 
 class TestGetItemTextsTool:

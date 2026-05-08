@@ -50,7 +50,8 @@ LLM directly (no separate tool calls). Served via BentoML.
 | `agentic_rec/params.py`  | All constants: paths, model names, table names               |
 | `agentic_rec/data.py`    | MovieLens download, Parquet conversion, train/val/test split |
 | `agentic_rec/index.py`   | LanceDB item index: embedding, hybrid search, reranking      |
-| `agentic_rec/agent.py`   | pydantic-ai `Agent` with two tools, request/response models  |
+| `agentic_rec/models.py`  | Pydantic models: request/response types, AgentDeps           |
+| `agentic_rec/agent.py`   | pydantic-ai `Agent` singleton with tools                     |
 | `agentic_rec/service.py` | BentoML `POST /recommend` endpoint _(planned)_               |
 
 ### Data columns
@@ -81,12 +82,14 @@ See `docs/superpowers/specs/2026-04-28-lancedb-index-design.md` for full spec.
 
 Module-level `pydantic_ai.Agent` singleton with `AgentDeps` (index + request) for dependency injection.
 
-- **`system_prompt`** (static): fixed recommendation workflow instructions.
-- **`@agent.instructions`** (dynamic): per-request user context built from `ctx.deps.request`
-  (text, history sorted by recency, top_k).
+- **`system_prompt`** (static): generic item recommendation workflow (domain-agnostic).
+- **`@agent.instructions`** (dynamic): per-request user context (JSON-serialized request).
+- **Runtime `instructions`**: domain-specific context (e.g., "items are movies with title and genres")
+  passed at `agent.run(instructions=..., deps=...)` call site.
 - **Tools**: `get_item_texts` (delegates to `index.get_ids`) and `search_items` (delegates to
   `index.search`). Both access the index via `ctx.deps.index`.
-- **`recommend(request, index)`**: async entrypoint — constructs deps and calls `agent.run()`.
+
+Callers use `agent.run(instructions=DOMAIN_INSTRUCTIONS, deps=AgentDeps(...))` directly.
 
 Request accepts `text` (required), `history` (list of interactions, defaults to `[]`),
 and `top_k` (default 10). Cold-start (empty history) is handled by the agent using `text`

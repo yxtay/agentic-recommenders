@@ -66,7 +66,4 @@ COPY agentic_rec agentic_rec
 RUN uv sync --no-default-groups
 
 USER ${USER}
-HEALTHCHECK CMD ["curl", "-fSs", "http://localhost:8000/healthz"]
-
 EXPOSE 8000
-ENTRYPOINT ["uv", "run", "fastapi", "run"]

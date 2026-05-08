@@ -79,6 +79,21 @@ agent: pydantic_ai.Agent[AgentDeps, RecommendResponse] = pydantic_ai.Agent(
 )
 
 
+async def check_llm() -> bool:
+    """Verify the LLM API key is set and valid."""
+    try:
+        test_agent: pydantic_ai.Agent[None, str] = pydantic_ai.Agent(
+            model=settings.llm_model, output_type=str
+        )
+        await test_agent.run("Say hi")
+    except (OSError, ValueError, RuntimeError):
+        logger.exception("llm check: failed ({})", settings.llm_model)
+        return False
+    else:
+        logger.info("llm check: ok ({})", settings.llm_model)
+        return True
+
+
 @agent.instructions
 def user_context(ctx: RunContext[AgentDeps]) -> str:
     """Serialize the request as JSON for the agent to interpret."""

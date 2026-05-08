@@ -12,6 +12,7 @@ from agentic_rec.agent import (
     USER_INSTRUCTIONS,
     AgentDeps,
     agent,
+    check_llm,
 )
 from agentic_rec.index import LanceIndex, LanceIndexConfig
 from agentic_rec.models import (
@@ -31,10 +32,12 @@ if TYPE_CHECKING:
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     app.state.index = LanceIndex.load(LanceIndexConfig())
     app.state.users = datasets.Dataset.from_parquet(settings.users_parquet)
+    app.state.llm_ready = await check_llm()
     logger.info(
-        "app ready: {} items, {} users",
+        "app ready: {} items, {} users, llm_ready={}",
         app.state.index.table.count_rows(),
         len(app.state.users),
+        app.state.llm_ready,
     )
     yield
 
@@ -62,6 +65,7 @@ async def health(index: IndexDep, users: UsersDep) -> dict:
         "index_ready": index.table is not None,
         "num_items": index.table.count_rows() if index.table else 0,
         "num_users": len(users),
+        "llm_ready": app.state.llm_ready,
     }
 
 

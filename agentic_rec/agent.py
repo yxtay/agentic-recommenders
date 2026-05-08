@@ -120,7 +120,7 @@ def main(limit: int = 5) -> None:
     users_dataset = datasets.Dataset.from_parquet(USERS_PARQUET)
     sample_user = users_dataset.shuffle()[0]
     request = RecommendRequest.model_validate({**sample_user, "limit": limit})
-    request.history = request.history[-30:]
+    request.history = request.history[-20:]
     rich.print(request)
 
     deps = AgentDeps(index=index, request=request)

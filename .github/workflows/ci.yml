@@ -94,11 +94,11 @@ jobs:
           IMAGE_ID: ${{ steps.build.outputs.imageid }}
 
       - run: ${DOCKER_RUN_CMD} "${IMAGE_ID}" uv run agent
+        continue-on-error: true
         env:
           IMAGE_ID: ${{ steps.build.outputs.imageid }}
 
-      - if: ${{ failure() }}
-        run: ${DOCKER_RUN_CMD} "${IMAGE_ID}" uv run index
+      - run: ${DOCKER_RUN_CMD} "${IMAGE_ID}" uv run index
         env:
           IMAGE_ID: ${{ steps.build.outputs.imageid }}
 

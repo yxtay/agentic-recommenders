@@ -31,6 +31,7 @@ if TYPE_CHECKING:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    """Load index, users, and verify LLM on startup."""
     app.state.index = LanceIndex.load(LanceIndexConfig())
     app.state.users = datasets.Dataset.from_parquet(settings.users_parquet)
     app.state.userid2idx = pd.Series(
@@ -50,14 +51,17 @@ app = FastAPI(title="Agentic Recommender", lifespan=lifespan)
 
 
 def get_index() -> LanceIndex:
+    """Dependency: return the LanceIndex from app state."""
     return app.state.index
 
 
 def get_users() -> datasets.Dataset:
+    """Dependency: return the users dataset from app state."""
     return app.state.users
 
 
 def get_userid2idx() -> pd.Series:
+    """Dependency: return the user ID to index mapping from app state."""
     return app.state.userid2idx
 
 
@@ -69,6 +73,7 @@ UserId2IdxDep = Annotated[pd.Series, Depends(get_userid2idx)]
 @app.get("/healthz")
 @logger.catch(reraise=True)
 async def healthz(index: IndexDep, users: UsersDep) -> dict:
+    """Return service health status."""
     return {
         "status": "ok",
         "index_ready": index.table is not None,
@@ -81,6 +86,7 @@ async def healthz(index: IndexDep, users: UsersDep) -> dict:
 @app.get("/info")
 @logger.catch(reraise=True)
 async def get_info() -> InfoResponse:
+    """Return model configuration info."""
     return InfoResponse(
         embedder_name=settings.embedder_name,
         reranker_name=settings.reranker_name,
@@ -92,6 +98,7 @@ async def get_info() -> InfoResponse:
 @app.post("/recommend/user")
 @logger.catch(reraise=True)
 async def recommend(request: RecommendRequest, *, index: IndexDep) -> RecommendResponse:
+    """Generate user-based recommendations via the ARAG agent."""
     deps = AgentDeps(index=index, request=request)
     response = await agent.run(instructions=USER_INSTRUCTIONS, deps=deps)
     logger.info("recommend: {} items", len(response.output.items))
@@ -103,6 +110,7 @@ async def recommend(request: RecommendRequest, *, index: IndexDep) -> RecommendR
 async def recommend_item(
     request: RecommendRequest, *, index: IndexDep
 ) -> RecommendResponse:
+    """Generate item-based (similar items) recommendations via the ARAG agent."""
     deps = AgentDeps(index=index, request=request)
     response = await agent.run(instructions=ITEM_INSTRUCTIONS, deps=deps)
     logger.info("recommend_item: {} items", len(response.output.items))
@@ -114,6 +122,7 @@ async def recommend_item(
 async def get_user(
     user_id: str, *, users: UsersDep, userid2idx: UserId2IdxDep
 ) -> UserResponse:
+    """Look up a user by ID."""
     if user_id not in userid2idx:
         raise HTTPException(status_code=404, detail=f"User {user_id} not found")
     user = users[userid2idx[user_id]]
@@ -130,6 +139,7 @@ async def recommend_user_id(
     userid2idx: UserId2IdxDep,
     index: IndexDep,
 ) -> RecommendResponse:
+    """Look up a user by ID and generate recommendations."""
     user = await get_user(user_id, users=users, userid2idx=userid2idx)
     user.history = user.history[-20:]
     request = RecommendRequest.model_validate({**user.model_dump(), "limit": limit})
@@ -139,6 +149,7 @@ async def recommend_user_id(
 @app.get("/items/{item_id}")
 @logger.catch(reraise=True)
 async def get_item(item_id: str, *, index: IndexDep) -> ItemResponse:
+    """Look up an item by ID."""
     result = index.get_ids([item_id])
     if len(result) == 0:
         raise HTTPException(status_code=404, detail=f"Item {item_id} not found")
@@ -150,6 +161,7 @@ async def get_item(item_id: str, *, index: IndexDep) -> ItemResponse:
 async def recommend_item_id(
     item_id: str, limit: int = 10, *, index: IndexDep
 ) -> RecommendResponse:
+    """Look up an item by ID and generate similar-item recommendations."""
     item = await get_item(item_id, index=index)
     request = RecommendRequest.model_validate({**item.model_dump(), "limit": limit})
     return await recommend_item(request, index=index)

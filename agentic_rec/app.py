@@ -141,43 +141,42 @@ def main(limit: int = 5) -> None:
     import rich
     from fastapi.testclient import TestClient
 
-    client = TestClient(app, raise_server_exceptions=False)
+    with TestClient(app, raise_server_exceptions=False) as client:
+        rich.print("[bold]GET /health[/bold]")
+        resp = client.get("/health")
+        resp.raise_for_status()
+        rich.print(resp.json())
 
-    rich.print("[bold]GET /health[/bold]")
-    resp = client.get("/health")
-    resp.raise_for_status()
-    rich.print(resp.json())
+        rich.print("\n[bold]GET /info[/bold]")
+        resp = client.get("/info")
+        resp.raise_for_status()
+        rich.print(resp.json())
 
-    rich.print("\n[bold]GET /info[/bold]")
-    resp = client.get("/info")
-    resp.raise_for_status()
-    rich.print(resp.json())
+        users = datasets.Dataset.from_parquet(settings.users_parquet)
+        user_id = random.choice(users["id"])
 
-    users = datasets.Dataset.from_parquet(settings.users_parquet)
-    user_id = random.choice(users["id"])
+        rich.print(f"\n[bold]GET /users/{user_id}[/bold]")
+        resp = client.get(f"/users/{user_id}")
+        resp.raise_for_status()
+        rich.print(resp.json())
 
-    rich.print(f"\n[bold]GET /users/{user_id}[/bold]")
-    resp = client.get(f"/users/{user_id}")
-    resp.raise_for_status()
-    rich.print(resp.json())
+        rich.print(f"\n[bold]POST /users/{user_id}/recommend?limit={limit}[/bold]")
+        resp = client.post(f"/users/{user_id}/recommend?limit={limit}")
+        resp.raise_for_status()
+        rich.print(resp.json())
 
-    rich.print(f"\n[bold]POST /users/{user_id}/recommend?limit={limit}[/bold]")
-    resp = client.post(f"/users/{user_id}/recommend?limit={limit}")
-    resp.raise_for_status()
-    rich.print(resp.json())
+        items = datasets.Dataset.from_parquet(settings.items_parquet)
+        item_id = random.choice(items["id"])
 
-    items = datasets.Dataset.from_parquet(settings.items_parquet)
-    item_id = random.choice(items["id"])
+        rich.print(f"\n[bold]GET /items/{item_id}[/bold]")
+        resp = client.get(f"/items/{item_id}")
+        resp.raise_for_status()
+        rich.print(resp.json())
 
-    rich.print(f"\n[bold]GET /items/{item_id}[/bold]")
-    resp = client.get(f"/items/{item_id}")
-    resp.raise_for_status()
-    rich.print(resp.json())
-
-    rich.print(f"\n[bold]POST /items/{item_id}/recommend?limit={limit}[/bold]")
-    resp = client.post(f"/items/{item_id}/recommend?limit={limit}")
-    resp.raise_for_status()
-    rich.print(resp.json())
+        rich.print(f"\n[bold]POST /items/{item_id}/recommend?limit={limit}[/bold]")
+        resp = client.post(f"/items/{item_id}/recommend?limit={limit}")
+        resp.raise_for_status()
+        rich.print(resp.json())
 
 
 def serve(host: str = "0.0.0.0", port: int = 8000) -> None:  # noqa: S104

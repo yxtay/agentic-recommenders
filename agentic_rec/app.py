@@ -34,7 +34,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     app.state.index = LanceIndex.load(LanceIndexConfig())
     app.state.users = datasets.Dataset.from_parquet(settings.users_parquet)
     app.state.userid2idx = dict(
-        zip(app.state.users["id"], range(len(app.state.users)), strict=False)
+        zip(app.state.users["id"], range(len(app.state.users)), strict=True)
     )
     app.state.llm_ready = await check_llm()
     logger.info(

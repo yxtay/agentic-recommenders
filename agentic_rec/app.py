@@ -70,7 +70,6 @@ UserId2IdxDep = Annotated[dict[str, int], Depends(get_userid2idx)]
 
 
 @app.get("/healthz")
-@logger.catch(reraise=True)
 async def healthz(index: IndexDep, users: UsersDep) -> dict:
     """Return service health status."""
     return {
@@ -83,7 +82,6 @@ async def healthz(index: IndexDep, users: UsersDep) -> dict:
 
 
 @app.get("/info")
-@logger.catch(reraise=True)
 async def get_info() -> InfoResponse:
     """Return model configuration info."""
     return InfoResponse(
@@ -117,7 +115,6 @@ async def recommend_item(
 
 
 @app.get("/users/{user_id}")
-@logger.catch(reraise=True)
 async def get_user(
     user_id: str, *, users: UsersDep, userid2idx: UserId2IdxDep
 ) -> UserResponse:
@@ -129,7 +126,6 @@ async def get_user(
 
 
 @app.post("/users/{user_id}/recommend")
-@logger.catch(reraise=True)
 async def recommend_user_id(
     user_id: str,
     limit: int = 10,
@@ -146,7 +142,6 @@ async def recommend_user_id(
 
 
 @app.get("/items/{item_id}")
-@logger.catch(reraise=True)
 async def get_item(item_id: str, *, index: IndexDep) -> ItemResponse:
     """Look up an item by ID."""
     result = index.get_ids([item_id])
@@ -156,7 +151,6 @@ async def get_item(item_id: str, *, index: IndexDep) -> ItemResponse:
 
 
 @app.post("/items/{item_id}/recommend")
-@logger.catch(reraise=True)
 async def recommend_item_id(
     item_id: str, limit: int = 10, *, index: IndexDep
 ) -> RecommendResponse:

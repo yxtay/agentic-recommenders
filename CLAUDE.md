@@ -8,6 +8,11 @@ At the start of every conversation, read `README.md` and `CLAUDE.md` in full bef
 At the end of every conversation, review both files and update any sections that are out of date with changes
 made during the session.
 
+## Workflow
+
+Commit changes regularly — after each logical unit of work (e.g., a completed feature, a bug fix,
+a documentation update). Do not batch unrelated changes into a single commit.
+
 ## Commands
 
 ```bash

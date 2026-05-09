@@ -1,6 +1,6 @@
 # LanceDB Index Implementation Plan
 
-**Goal:** Rewrite `LanceIndex` to use `LanceModel` for automatic embedding, hybrid search with
+**Goal:** Implement `LanceIndex` using `LanceModel` for automatic embedding, hybrid search with
 answerdotai reranking, and sqlalchemy-built WHERE clauses for SQL injection safety.
 
 **Architecture:** `LanceIndexConfig` holds tunable parameters (paths, model names). `LanceIndex`
@@ -18,7 +18,7 @@ runs hybrid (vector + FTS) search and reranks results; `get_ids` does scalar-ind
 | File                   | Change                                                          |
 |------------------------|-----------------------------------------------------------------|
 | `pyproject.toml`       | Add `rerankers`, `sqlalchemy` to `[project.dependencies]`       |
-| `agentic_rec/index.py` | Full rewrite — config, LanceModel schema, hybrid search, rerank |
+| `agentic_rec/index.py` | Config, LanceModel schema, hybrid search, rerank                |
 | `tests/test_index.py`  | Unit + integration tests for all index operations               |
 
 ---

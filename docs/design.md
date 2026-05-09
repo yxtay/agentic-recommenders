@@ -32,15 +32,15 @@ Evaluated on Amazon Reviews (Clothing, Electronics, Home & Kitchen) with NDCG@5 
 reasoning stages (understanding, retrieval, filtering, ranking) within one LLM call. Key
 differences from the paper:
 
-| Aspect          | Paper (ARAG)                         | This implementation                     |
-|-----------------|--------------------------------------|-----------------------------------------|
-| Agents          | 4 specialized LLM agents             | 1 agent with tool access                |
-| Retrieval       | Cosine similarity top-k              | Hybrid (vector + FTS) with reranking    |
-| Filtering       | NLI agent with threshold scoring     | Agent reasoning (no explicit threshold) |
-| Diversity       | Not explicitly addressed             | Multi-query retrieval (2-4 calls)       |
-| Dataset         | Amazon Reviews (3 categories)        | MovieLens 1M                            |
-| Cold-start      | Not addressed                        | Supported via text-only input           |
-| Item-based recs | Not addressed                        | Supported via ITEM_INSTRUCTIONS         |
+| Aspect          | Paper (ARAG)                     | This implementation                     |
+|-----------------|----------------------------------|-----------------------------------------|
+| Agents          | 4 specialized LLM agents         | 1 agent with tool access                |
+| Retrieval       | Cosine similarity top-k          | Hybrid (vector + FTS) with reranking    |
+| Filtering       | NLI agent with threshold scoring | Agent reasoning (no explicit threshold) |
+| Diversity       | Not explicitly addressed         | Multi-query retrieval (2-4 calls)       |
+| Dataset         | Amazon Reviews (3 categories)    | MovieLens 1M                            |
+| Cold-start      | Not addressed                    | Supported via text-only input           |
+| Item-based recs | Not addressed                    | Supported via ITEM_INSTRUCTIONS         |
 
 ---
 
@@ -232,16 +232,16 @@ response = await agent.run(instructions=ITEM_INSTRUCTIONS, deps=AgentDeps(index,
 
 ### Routes
 
-| Route                         | Method | Description                                          |
-|-------------------------------|--------|------------------------------------------------------|
-| `/healthz`                    | GET    | Service health (index, users, LLM readiness)         |
-| `/info`                       | GET    | Model configuration (embedder, reranker, LLM)        |
-| `/recommend`                  | POST   | User-based recommendations (alias: `/recommend/user`)|
-| `/recommend/item`             | POST   | Item-based similar-item recommendations              |
-| `/users/{user_id}`            | GET    | Look up user by ID (text + history)                  |
-| `/users/{user_id}/recommend`  | POST   | Recommend for an existing user by ID                 |
-| `/items/{item_id}`            | GET    | Look up item by ID (text)                            |
-| `/items/{item_id}/recommend`  | POST   | Similar-item recommendations for an item by ID       |
+| Route                        | Method | Description                                           |
+|------------------------------|--------|-------------------------------------------------------|
+| `/healthz`                   | GET    | Service health (index, users, LLM readiness)          |
+| `/info`                      | GET    | Model configuration (embedder, reranker, LLM)         |
+| `/recommend`                 | POST   | User-based recommendations (alias: `/recommend/user`) |
+| `/recommend/item`            | POST   | Item-based similar-item recommendations               |
+| `/users/{user_id}`           | GET    | Look up user by ID (text + history)                   |
+| `/users/{user_id}/recommend` | POST   | Recommend for an existing user by ID                  |
+| `/items/{item_id}`           | GET    | Look up item by ID (text)                             |
+| `/items/{item_id}/recommend` | POST   | Similar-item recommendations for an item by ID        |
 
 ### Startup (lifespan)
 

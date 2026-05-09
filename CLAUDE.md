@@ -111,16 +111,16 @@ See `docs/design.md` for full spec.
 
 ### API routes
 
-| Route                         | Method | Description                                          |
-|-------------------------------|--------|------------------------------------------------------|
-| `/healthz`                    | GET    | Service health (index, users, LLM readiness)         |
-| `/info`                       | GET    | Model configuration (embedder, reranker, LLM)        |
-| `/recommend`                  | POST   | User-based recommendations (alias: `/recommend/user`)|
-| `/recommend/item`             | POST   | Item-based similar-item recommendations              |
-| `/users/{user_id}`            | GET    | Look up user by ID (text + history)                  |
-| `/users/{user_id}/recommend`  | POST   | Recommend for an existing user by ID                 |
-| `/items/{item_id}`            | GET    | Look up item by ID (text)                            |
-| `/items/{item_id}/recommend`  | POST   | Similar-item recommendations for an item by ID       |
+| Route                        | Method | Description                                           |
+|------------------------------|--------|-------------------------------------------------------|
+| `/healthz`                   | GET    | Service health (index, users, LLM readiness)          |
+| `/info`                      | GET    | Model configuration (embedder, reranker, LLM)         |
+| `/recommend`                 | POST   | User-based recommendations (alias: `/recommend/user`) |
+| `/recommend/item`            | POST   | Item-based similar-item recommendations               |
+| `/users/{user_id}`           | GET    | Look up user by ID (text + history)                   |
+| `/users/{user_id}/recommend` | POST   | Recommend for an existing user by ID                  |
+| `/items/{item_id}`           | GET    | Look up item by ID (text)                             |
+| `/items/{item_id}/recommend` | POST   | Similar-item recommendations for an item by ID        |
 
 ### LLM configuration
 

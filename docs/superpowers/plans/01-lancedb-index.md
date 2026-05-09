@@ -15,11 +15,11 @@ runs hybrid (vector + FTS) search and reranks results; `get_ids` does scalar-ind
 
 ## File Map
 
-| File                   | Change                                                          |
-|------------------------|-----------------------------------------------------------------|
-| `pyproject.toml`       | Add `rerankers`, `sqlalchemy` to `[project.dependencies]`       |
-| `agentic_rec/index.py` | Config, LanceModel schema, hybrid search, rerank                |
-| `tests/test_index.py`  | Unit + integration tests for all index operations               |
+| File                   | Change                                                    |
+|------------------------|-----------------------------------------------------------|
+| `pyproject.toml`       | Add `rerankers`, `sqlalchemy` to `[project.dependencies]` |
+| `agentic_rec/index.py` | Config, LanceModel schema, hybrid search, rerank          |
+| `tests/test_index.py`  | Unit + integration tests for all index operations         |
 
 ---
 

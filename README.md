@@ -101,16 +101,16 @@ curl -X POST http://localhost:3000/recommend \
 
 ## API Routes
 
-| Route                         | Method | Description                                          |
-|-------------------------------|--------|------------------------------------------------------|
-| `/healthz`                    | GET    | Service health (index, users, LLM readiness)         |
-| `/info`                       | GET    | Model configuration (embedder, reranker, LLM)        |
-| `/recommend`                  | POST   | User-based recommendations (alias: `/recommend/user`)|
-| `/recommend/item`             | POST   | Item-based similar-item recommendations              |
-| `/users/{user_id}`            | GET    | Look up user by ID (text + history)                  |
-| `/users/{user_id}/recommend`  | POST   | Recommend for an existing user by ID                 |
-| `/items/{item_id}`            | GET    | Look up item by ID (text)                            |
-| `/items/{item_id}/recommend`  | POST   | Similar-item recommendations for an item by ID       |
+| Route                        | Method | Description                                           |
+|------------------------------|--------|-------------------------------------------------------|
+| `/healthz`                   | GET    | Service health (index, users, LLM readiness)          |
+| `/info`                      | GET    | Model configuration (embedder, reranker, LLM)         |
+| `/recommend`                 | POST   | User-based recommendations (alias: `/recommend/user`) |
+| `/recommend/item`            | POST   | Item-based similar-item recommendations               |
+| `/users/{user_id}`           | GET    | Look up user by ID (text + history)                   |
+| `/users/{user_id}/recommend` | POST   | Recommend for an existing user by ID                  |
+| `/items/{item_id}`           | GET    | Look up item by ID (text)                             |
+| `/items/{item_id}/recommend` | POST   | Similar-item recommendations for an item by ID        |
 
 The `/users/{user_id}/recommend` and `/items/{item_id}/recommend` convenience routes look up the entity and
 then delegate to the corresponding `/recommend` or `/recommend/item` endpoint.

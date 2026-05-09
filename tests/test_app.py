@@ -12,7 +12,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from agentic_rec.app import app, get_index, get_userid2idx, get_users
-from agentic_rec.models import RankedItem, RecommendResponse
+from agentic_rec.models import ItemRecommended, RecommendResponse
 
 
 @pytest.fixture
@@ -53,7 +53,7 @@ def mock_userid2idx() -> pd.Series:
 def mock_agent_response() -> RecommendResponse:
     return RecommendResponse(
         items=[
-            RankedItem(
+            ItemRecommended(
                 id="99",
                 text="Inception (2010) | Sci-Fi, Thriller",
                 explanation="Similar to The Matrix",

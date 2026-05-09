@@ -8,6 +8,11 @@ At the start of every conversation, read `README.md` and `CLAUDE.md` in full bef
 At the end of every conversation, review both files and update any sections that are out of date with changes
 made during the session.
 
+## Workflow
+
+Commit changes regularly — after each logical unit of work (e.g., a completed feature, a bug fix,
+a documentation update). Do not batch unrelated changes into a single commit.
+
 ## Commands
 
 ```bash
@@ -24,7 +29,7 @@ uv run index --parquet_path data/ml-1m/users.parquet --table_name users
 # run agent sanity check (samples a user, runs recommendation)
 uv run agent
 
-# app sanity check (hits healthz, info, user/item lookup and recommend)
+# app sanity check (hits healthz, info, user/item lookup, user/item recommend)
 uv run app
 
 # serve FastAPI endpoint
@@ -43,11 +48,12 @@ uv run pytest tests/test_index.py::TestSearch::test_returns_dataset -v
 
 ## Architecture
 
-ARAG (Agentic Retrieval-Augmented Generation) for MovieLens 1M. A single `pydantic-ai` agent receives
-`text` (demographics/preferences) and `history` (past interactions, may be empty for cold-start) and
-orchestrates two tools: item-text lookup by ID (`get_item_texts`) and hybrid candidate retrieval
-(`search_items`). Context understanding and item ranking with per-item explanations are done by the agent's
-LLM directly (no separate tool calls). Served via FastAPI.
+Simplified single-agent implementation inspired by ARAG (Agentic Retrieval-Augmented Generation),
+applied to MovieLens 1M. The paper's 4-agent pipeline is distilled into a single `pydantic-ai` agent
+that receives `text` (demographics/preferences) and `history` (past interactions, may be empty for
+cold-start) and orchestrates two tools: item-text lookup by ID (`get_item_texts`) and hybrid candidate
+retrieval (`search_items`). Context understanding and item ranking with per-item explanations are done
+by the agent's LLM directly (no separate tool calls). Served via FastAPI.
 
 ### Modules
 
@@ -58,7 +64,7 @@ LLM directly (no separate tool calls). Served via FastAPI.
 | `agentic_rec/index.py`    | LanceDB item index: embedding, hybrid search, reranking             |
 | `agentic_rec/models.py`   | Pydantic models: request/response types                             |
 | `agentic_rec/agent.py`    | pydantic-ai `Agent` singleton with tools                            |
-| `agentic_rec/app.py`      | FastAPI service: `/recommend`, `/users`, `/items`, `/info` routes   |
+| `agentic_rec/app.py`      | FastAPI service (see API routes below)                              |
 
 ### Data columns
 
@@ -82,7 +88,7 @@ and answerdotai reranker — each loaded once on first access. Key methods:
 `LanceIndexConfig` fields: `lancedb_path`, `table_name`, `embedder_name`, `embedder_device`,
 `reranker_name`, `reranker_type`.
 
-See `docs/superpowers/specs/2026-04-28-lancedb-index-design.md` for full spec.
+See `docs/design.md` for full spec.
 
 ### Agent
 
@@ -101,7 +107,20 @@ Request accepts `text` (required), `history` (list of interactions, defaults to 
 and `limit` (default 10). Cold-start (empty history) is handled by the agent using `text`
 alone for retrieval.
 
-See `docs/superpowers/specs/2026-05-07-arag-request-redesign.md` for full spec.
+See `docs/design.md` for full spec.
+
+### API routes
+
+| Route                        | Method | Description                                           |
+|------------------------------|--------|-------------------------------------------------------|
+| `/healthz`                   | GET    | Service health (index, users, LLM readiness)          |
+| `/info`                      | GET    | Model configuration (embedder, reranker, LLM)         |
+| `/recommend`                 | POST   | User-based recommendations (alias: `/recommend/user`) |
+| `/recommend/item`            | POST   | Item-based similar-item recommendations               |
+| `/users/{user_id}`           | GET    | Look up user by ID (text + history)                   |
+| `/users/{user_id}/recommend` | POST   | Recommend for an existing user by ID                  |
+| `/items/{item_id}`           | GET    | Look up item by ID (text)                             |
+| `/items/{item_id}/recommend` | POST   | Similar-item recommendations for an item by ID        |
 
 ### LLM configuration
 

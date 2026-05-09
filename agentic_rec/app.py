@@ -3,7 +3,6 @@ from __future__ import annotations
 from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING, Annotated
 
-import datasets
 from fastapi import Depends, FastAPI, HTTPException
 from loguru import logger
 
@@ -30,17 +29,16 @@ if TYPE_CHECKING:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-    """Load index, users, and verify LLM on startup."""
+    """Load item and user indices, and verify LLM on startup."""
     app.state.index = LanceIndex.load(LanceIndexConfig())
-    app.state.users = datasets.Dataset.from_parquet(settings.users_parquet)
-    app.state.userid2idx = dict(
-        zip(app.state.users["id"], range(len(app.state.users)), strict=True)
+    app.state.users_index = LanceIndex.load(
+        LanceIndexConfig(table_name=settings.users_table_name)
     )
     app.state.llm_ready = await check_llm()
     logger.info(
         "app ready: {} items, {} users, llm_ready={}",
         app.state.index.table.count_rows(),
-        len(app.state.users),
+        app.state.users_index.table.count_rows(),
         app.state.llm_ready,
     )
     yield
@@ -50,33 +48,27 @@ app = FastAPI(title="Agentic Recommender", lifespan=lifespan)
 
 
 def get_index() -> LanceIndex:
-    """Dependency: return the LanceIndex from app state."""
+    """Dependency: return the items LanceIndex from app state."""
     return app.state.index
 
 
-def get_users() -> datasets.Dataset:
-    """Dependency: return the users dataset from app state."""
-    return app.state.users
-
-
-def get_userid2idx() -> dict[str, int]:
-    """Dependency: return the user ID to index mapping from app state."""
-    return app.state.userid2idx
+def get_users_index() -> LanceIndex:
+    """Dependency: return the users LanceIndex from app state."""
+    return app.state.users_index
 
 
 IndexDep = Annotated[LanceIndex, Depends(get_index)]
-UsersDep = Annotated[datasets.Dataset, Depends(get_users)]
-UserId2IdxDep = Annotated[dict[str, int], Depends(get_userid2idx)]
+UsersIndexDep = Annotated[LanceIndex, Depends(get_users_index)]
 
 
 @app.get("/healthz")
-async def healthz(index: IndexDep, users: UsersDep) -> dict:
+async def healthz(index: IndexDep, users_index: UsersIndexDep) -> dict:
     """Return service health status."""
     return {
         "status": "ok",
         "index_ready": index.table is not None,
         "num_items": index.table.count_rows() if index.table else 0,
-        "num_users": len(users),
+        "num_users": users_index.table.count_rows() if users_index.table else 0,
         "llm_ready": app.state.llm_ready,
     }
 
@@ -115,14 +107,12 @@ async def recommend_item(
 
 
 @app.get("/users/{user_id}")
-async def get_user(
-    user_id: str, *, users: UsersDep, userid2idx: UserId2IdxDep
-) -> UserResponse:
+async def get_user(user_id: str, *, users_index: UsersIndexDep) -> UserResponse:
     """Look up a user by ID."""
-    if user_id not in userid2idx:
+    result = users_index.get_ids([user_id])
+    if len(result) == 0:
         raise HTTPException(status_code=404, detail=f"User {user_id} not found")
-    user = users[userid2idx[user_id]]
-    return UserResponse.model_validate(user)
+    return UserResponse.model_validate(result[0])
 
 
 @app.post("/users/{user_id}/recommend")
@@ -130,12 +120,11 @@ async def recommend_user_id(
     user_id: str,
     limit: int = 10,
     *,
-    users: UsersDep,
-    userid2idx: UserId2IdxDep,
+    users_index: UsersIndexDep,
     index: IndexDep,
 ) -> RecommendResponse:
     """Look up a user by ID and generate recommendations."""
-    user = await get_user(user_id, users=users, userid2idx=userid2idx)
+    user = await get_user(user_id, users_index=users_index)
     user.history = user.history[-20:]
     request = RecommendRequest.model_validate({**user.model_dump(), "limit": limit})
     return await recommend(request, index=index)
@@ -170,6 +159,11 @@ def main(limit: int = 5) -> None:
     import agentic_rec.index
 
     agentic_rec.index.main(overwrite=False)
+    agentic_rec.index.main(
+        parquet_path=settings.users_parquet,
+        table_name=settings.users_table_name,
+        overwrite=False,
+    )
 
     with TestClient(app, raise_server_exceptions=False) as client:
         rich.print("[bold]GET /healthz[/bold]")
@@ -182,8 +176,14 @@ def main(limit: int = 5) -> None:
         resp.raise_for_status()
         rich.print(resp.json())
 
-        users = datasets.Dataset.from_parquet(settings.users_parquet)
-        user_id = random.choice(users["id"])
+        user_ids = (
+            app.state.users_index.table.search()
+            .select(["id"])
+            .to_arrow()
+            .column("id")
+            .to_pylist()
+        )
+        user_id = random.choice(user_ids)
 
         rich.print(f"\n[bold]GET /users/{user_id}[/bold]")
         resp = client.get(f"/users/{user_id}")
@@ -195,8 +195,14 @@ def main(limit: int = 5) -> None:
         resp.raise_for_status()
         rich.print(resp.json())
 
-        items = datasets.Dataset.from_parquet(settings.items_parquet)
-        item_id = random.choice(items["id"])
+        item_ids = (
+            app.state.index.table.search()
+            .select(["id"])
+            .to_arrow()
+            .column("id")
+            .to_pylist()
+        )
+        item_id = random.choice(item_ids)
 
         rich.print(f"\n[bold]GET /items/{item_id}[/bold]")
         resp = client.get(f"/items/{item_id}")

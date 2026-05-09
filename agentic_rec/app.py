@@ -178,14 +178,14 @@ def main(limit: int = 5) -> None:
         resp.raise_for_status()
         rich.print(resp.json())
 
-        user_ids = (
+        user_count = app.state.users_index.table.count_rows()
+        user_id = (
             app.state.users_index.table.search()
             .select(["id"])
-            .to_arrow()
-            .column("id")
-            .to_pylist()
+            .offset(random.randint(0, user_count - 1))
+            .limit(1)
+            .to_list()[0]["id"]
         )
-        user_id = random.choice(user_ids)
 
         rich.print(f"\n[bold]GET /users/{user_id}[/bold]")
         resp = client.get(f"/users/{user_id}")
@@ -197,14 +197,14 @@ def main(limit: int = 5) -> None:
         resp.raise_for_status()
         rich.print(resp.json())
 
-        item_ids = (
+        item_count = app.state.items_index.table.count_rows()
+        item_id = (
             app.state.items_index.table.search()
             .select(["id"])
-            .to_arrow()
-            .column("id")
-            .to_pylist()
+            .offset(random.randint(0, item_count - 1))
+            .limit(1)
+            .to_list()[0]["id"]
         )
-        item_id = random.choice(item_ids)
 
         rich.print(f"\n[bold]GET /items/{item_id}[/bold]")
         resp = client.get(f"/items/{item_id}")

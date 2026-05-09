@@ -142,16 +142,18 @@ class LanceIndexConfig(pydantic.BaseModel):
 Uses `functools.cached_property` for lazy-loaded components (each loaded once on first access):
 
 - **`embedder`** — sentence-transformers model via lancedb registry
-- **`schema`** — `LanceModel` subclass with `id: str`, `text: SourceField`, `vector: VectorField`
 - **`reranker`** — `AnswerdotaiRerankers` with pylate model type
 
 ### Methods
 
 **`index_data(dataset, overwrite=False)`**
 
-Input: `datasets.Dataset` with `id` and `text` columns. Steps:
+Input: `datasets.Dataset` with required `id` and `text` columns, plus any additional columns.
+The schema is inferred from the dataset's PyArrow schema (supports nested list/struct types).
+The `vector` column is computed automatically via the configured embedder. Steps:
 
-1. Connect to LanceDB, create table from Arrow batches with auto-embedding via schema.
+1. Connect to LanceDB, create table from Arrow batches with `EmbeddingFunctionConfig`
+  (auto-embeds `text` → `vector`). All dataset columns are preserved.
 2. Create scalar index on `id` (fast point lookups).
 3. Create FTS index on `text` (BM25 full-text search).
 4. Create `IVF_RQ` vector index with heuristic partitioning (`2^(log2(n)/2)`).
@@ -248,17 +250,15 @@ response = await agent.run(instructions=ITEM_INSTRUCTIONS, deps=AgentDeps(index,
 Resources loaded once via FastAPI lifespan context manager:
 
 1. `LanceIndex.load(LanceIndexConfig())` — opens items LanceDB table.
-2. `datasets.Dataset.from_parquet(settings.users_parquet)` — memory-mapped users dataset.
-3. `dict(zip(users["id"], range(len(users))))` — user ID to row index mapping.
-4. `check_llm()` — verifies LLM API connectivity.
+2. `LanceIndex.load(LanceIndexConfig(table_name="users"))` — opens users LanceDB table.
+3. `check_llm()` — verifies LLM API connectivity.
 
 ### Dependencies
 
 Injected via FastAPI `Depends`:
 
-- `IndexDep` — `LanceIndex` from app state
-- `UsersDep` — `datasets.Dataset` from app state
-- `UserId2IdxDep` — `dict[str, int]` from app state
+- `ItemsIndexDep` — items `LanceIndex` from app state
+- `UsersIndexDep` — users `LanceIndex` from app state
 
 ### Data flow
 
@@ -314,7 +314,8 @@ export CEREBRAS_API_KEY="..."
 - **Per-item explanations**: `ItemRecommended.explanation` makes recommendations interpretable.
 - **SQL injection safety**: all LanceDB `.where()` filters built via sqlalchemy Core with
   `literal_binds=True` compilation.
-- **Memory-mapped users**: `datasets.Dataset` (Arrow backend) keeps user data on disk; only accessed
-  rows are paged into RAM.
+- **Users via LanceIndex**: users are stored in a LanceDB table (same as items), enabling scalar-indexed
+  lookups by ID. The users table preserves all columns (demographics, history, splits) via PyArrow schema
+  inference.
 - **Lifespan over `@app.on_event`**: FastAPI-recommended pattern; events are deprecated.
 - **Module-level agent singleton**: agent is stateless; all per-request context flows through `deps`.

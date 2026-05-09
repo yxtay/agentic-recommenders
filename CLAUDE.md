@@ -54,6 +54,14 @@ See `README.md` for overview and `docs/design.md` for full spec.
 
 All Parquet columns are prefixed by entity (`item_id`, `item_text`, `user_id`, `user_text`, `event_value`,
 `event_datetime`). The LanceDB index uses unprefixed names: `id`, `text`, `vector`.
+Additional columns (e.g. `history`, `target`, split flags) are preserved with their original PyArrow types.
+
+### App state
+
+The FastAPI app loads two `LanceIndex` instances on startup:
+
+- `app.state.items_index` — items table (default `LanceIndexConfig()`)
+- `app.state.users_index` — users table (`LanceIndexConfig(table_name="users")`)
 
 ## Key conventions
 

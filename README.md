@@ -31,7 +31,7 @@ Request (text, history: [{item_id, event_datetime, event_name, event_value}], li
     ├─ [Tool 1] get_item_texts(item_ids)    → {item_id: item_text}  (skipped if cold-start)
     ├─ LLM: context understanding           → preference summary
     ├─ [Tool 2] search_items(query, exclude_ids) → candidates  (called 2-4×)
-    └─ LLM: rank + explain                 → RankedItem list
+    └─ LLM: rank + explain                 → ItemRecommended list
 
 POST /recommend      → { items: [{ id, text, explanation }] }
 POST /recommend/item → { items: [{ id, text, explanation }] }

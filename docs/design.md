@@ -91,7 +91,7 @@ class ItemCandidate(pydantic.BaseModel):
     text: str
     score: float = 0.0
 
-class RankedItem(pydantic.BaseModel):
+class ItemRecommended(pydantic.BaseModel):
     id: str
     text: str
     explanation: str
@@ -102,7 +102,7 @@ class RecommendRequest(pydantic.BaseModel):
     limit: int = 10
 
 class RecommendResponse(pydantic.BaseModel):
-    items: list[RankedItem]
+    items: list[ItemRecommended]
 
 class UserResponse(pydantic.BaseModel):
     id: str
@@ -311,7 +311,7 @@ export CEREBRAS_API_KEY="..."
   strategies rather than a single large retrieval.
 - **Hypothetical item text**: when recent history is a poor query signal, the agent generates a
   synthetic item description matching real item schema, then uses it as the search query.
-- **Per-item explanations**: `RankedItem.explanation` makes recommendations interpretable.
+- **Per-item explanations**: `ItemRecommended.explanation` makes recommendations interpretable.
 - **SQL injection safety**: all LanceDB `.where()` filters built via sqlalchemy Core with
   `literal_binds=True` compilation.
 - **Memory-mapped users**: `datasets.Dataset` (Arrow backend) keeps user data on disk; only accessed

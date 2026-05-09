@@ -28,10 +28,10 @@ dynamic instructions (serialized request JSON) and domain-specific runtime instr
 
 - **`Interaction`**: `item_id`, `event_datetime`, `event_name`, `event_value`.
 - **`ItemCandidate`**: `id`, `text`, `score` (default 0.0). Returned by search tool.
-- **`RankedItem`**: `id`, `text`, `explanation`. Final output item.
+- **`ItemRecommended`**: `id`, `text`, `explanation`. Final output item.
 - **`RecommendRequest`**: `text` (required), `history` (list of Interaction, default `[]`),
   `limit` (default 10).
-- **`RecommendResponse`**: `items` (list of RankedItem). Used as `output_type`.
+- **`RecommendResponse`**: `items` (list of ItemRecommended). Used as `output_type`.
 
 ### 2. Define `AgentDeps`
 

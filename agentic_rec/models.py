@@ -18,7 +18,7 @@ class ItemCandidate(pydantic.BaseModel):
     score: float = 0.0
 
 
-class RankedItem(pydantic.BaseModel):
+class ItemRecommended(pydantic.BaseModel):
     id: str
     text: str
     explanation: str
@@ -31,7 +31,7 @@ class RecommendRequest(pydantic.BaseModel):
 
 
 class RecommendResponse(pydantic.BaseModel):
-    items: list[RankedItem]
+    items: list[ItemRecommended]
 
 
 class UserResponse(pydantic.BaseModel):

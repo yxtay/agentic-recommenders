@@ -86,7 +86,6 @@ def user_context(ctx: RunContext[AgentDeps]) -> str:
 
 
 @agent.tool
-@logger.catch(reraise=True)
 def get_item_texts(
     ctx: RunContext[AgentDeps],
     item_ids: list[str],
@@ -106,7 +105,6 @@ _item_candidate_adapter = pydantic.TypeAdapter(list[ItemCandidate])
 
 
 @agent.tool
-@logger.catch(reraise=True)
 def search_items(
     ctx: RunContext[AgentDeps],
     query: str,

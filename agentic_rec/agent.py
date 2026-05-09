@@ -165,7 +165,11 @@ def main(limit: int = 5) -> None:
     rich.print(response.output.items)
 
 
-if __name__ == "__main__":
+def cli() -> None:
     from jsonargparse import auto_cli
 
     auto_cli(main, as_positional=False)
+
+
+if __name__ == "__main__":
+    cli()

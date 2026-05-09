@@ -35,10 +35,10 @@ dev = [
 ]
 
 [project.scripts]
-data = "agentic_rec.data:main"
-index = "agentic_rec.index:main"
-agent = "agentic_rec.agent:main"
-app = "agentic_rec.app:main"
+data = "agentic_rec.data:cli"
+index = "agentic_rec.index:cli"
+agent = "agentic_rec.agent:cli"
+app = "agentic_rec.app:cli"
 
 [tool.fastapi]
 entrypoint = "agentic_rec.app:app"

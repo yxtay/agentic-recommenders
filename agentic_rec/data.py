@@ -522,7 +522,11 @@ def main(data_dir: str = settings.data_dir, *, overwrite: bool = True) -> None:
         prepare_movielens(data_dir, overwrite=overwrite).head().collect().glimpse()
 
 
-if __name__ == "__main__":
+def cli() -> None:
     from jsonargparse import auto_cli
 
     auto_cli(main, as_positional=False)
+
+
+if __name__ == "__main__":
+    cli()

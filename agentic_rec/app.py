@@ -4,7 +4,6 @@ from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING, Annotated
 
 import datasets
-import pandas as pd
 from fastapi import Depends, FastAPI, HTTPException
 from loguru import logger
 
@@ -34,8 +33,8 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     """Load index, users, and verify LLM on startup."""
     app.state.index = LanceIndex.load(LanceIndexConfig())
     app.state.users = datasets.Dataset.from_parquet(settings.users_parquet)
-    app.state.userid2idx = pd.Series(
-        pd.RangeIndex(len(app.state.users)), index=app.state.users["id"]
+    app.state.userid2idx = dict(
+        zip(app.state.users["id"], range(len(app.state.users)), strict=False)
     )
     app.state.llm_ready = await check_llm()
     logger.info(
@@ -60,14 +59,14 @@ def get_users() -> datasets.Dataset:
     return app.state.users
 
 
-def get_userid2idx() -> pd.Series:
+def get_userid2idx() -> dict[str, int]:
     """Dependency: return the user ID to index mapping from app state."""
     return app.state.userid2idx
 
 
 IndexDep = Annotated[LanceIndex, Depends(get_index)]
 UsersDep = Annotated[datasets.Dataset, Depends(get_users)]
-UserId2IdxDep = Annotated[pd.Series, Depends(get_userid2idx)]
+UserId2IdxDep = Annotated[dict[str, int], Depends(get_userid2idx)]
 
 
 @app.get("/healthz")

@@ -1,14 +1,17 @@
 # agentic-recommenders
 
-Implementation of
-[ARAG: Agentic Retrieval Augmented Generation for Personalized Recommendation](https://arxiv.org/abs/2506.21931)
-on the MovieLens 1M dataset.
+A simplified single-agent implementation inspired by
+[ARAG: Agentic Retrieval Augmented Generation for Personalized Recommendation](https://arxiv.org/abs/2506.21931),
+applied to the MovieLens 1M dataset.
 
 ## Overview
 
-ARAG replaces static retrieval heuristics with an LLM agent that reasons about user preferences and item relevance.
-A single `pydantic-ai` agent receives `text` (demographics/preferences) and `history` (past interactions,
-may be empty for cold-start users) and works in three stages:
+The ARAG paper proposes a 4-agent pipeline (User Understanding, NLI filtering, Context Summary, Item Ranker)
+for personalized recommendation. This project distills that into a single `pydantic-ai` agent that performs
+all reasoning stages within one LLM call, augmented with tool access for retrieval.
+
+The agent receives `text` (demographics/preferences) and `history` (past interactions, may be empty for
+cold-start users) and works in four stages:
 
 1. **Item text lookup** — fetches the text of interacted items from LanceDB by ID
 2. **Context understanding** — LLM builds a preference summary from interaction history and item texts,
@@ -30,7 +33,8 @@ Request (text, history: [{item_id, event_datetime, event_name, event_value}], li
     ├─ [Tool 2] search_items(query, exclude_ids) → candidates  (called 2-4×)
     └─ LLM: rank + explain                 → RankedItem list
 
-POST /recommend → [{ item_id, item_text, explanation }]
+POST /recommend      → { items: [{ id, text, explanation }] }
+POST /recommend/item → { items: [{ id, text, explanation }] }
 ```
 
 ## Requirements
@@ -95,6 +99,22 @@ curl -X POST http://localhost:3000/recommend \
   }'
 ```
 
+## API Routes
+
+| Route                         | Method | Description                                          |
+|-------------------------------|--------|------------------------------------------------------|
+| `/healthz`                    | GET    | Service health (index, users, LLM readiness)         |
+| `/info`                       | GET    | Model configuration (embedder, reranker, LLM)        |
+| `/recommend`                  | POST   | User-based recommendations (alias: `/recommend/user`)|
+| `/recommend/item`             | POST   | Item-based similar-item recommendations              |
+| `/users/{user_id}`            | GET    | Look up user by ID (text + history)                  |
+| `/users/{user_id}/recommend`  | POST   | Recommend for an existing user by ID                 |
+| `/items/{item_id}`            | GET    | Look up item by ID (text)                            |
+| `/items/{item_id}/recommend`  | POST   | Similar-item recommendations for an item by ID       |
+
+The `/users/{user_id}/recommend` and `/items/{item_id}/recommend` convenience routes look up the entity and
+then delegate to the corresponding `/recommend` or `/recommend/item` endpoint.
+
 ## Development
 
 ```bash
@@ -109,4 +129,4 @@ uv run pytest
 ## References
 
 - [ARAG: Agentic Retrieval Augmented Generation for Personalized Recommendation](https://arxiv.org/abs/2506.21931)
-- [Design spec](docs/superpowers/specs/2026-04-28-arag-design.md)
+- [Design spec](docs/design.md)

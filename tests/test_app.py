@@ -10,7 +10,7 @@ import datasets
 import pytest
 from fastapi.testclient import TestClient
 
-from agentic_rec.app import app, get_index, get_users_index
+from agentic_rec.app import app, get_items_index, get_users_index
 from agentic_rec.models import ItemRecommended, RecommendResponse
 
 
@@ -61,7 +61,7 @@ def mock_agent_response() -> RecommendResponse:
 
 @pytest.fixture
 def client(mock_index: MagicMock, mock_users_index: MagicMock) -> Iterator[TestClient]:
-    app.dependency_overrides[get_index] = lambda: mock_index
+    app.dependency_overrides[get_items_index] = lambda: mock_index
     app.dependency_overrides[get_users_index] = lambda: mock_users_index
     yield TestClient(app)
     app.dependency_overrides.clear()

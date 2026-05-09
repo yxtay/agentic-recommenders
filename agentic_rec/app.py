@@ -30,14 +30,14 @@ if TYPE_CHECKING:
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     """Load item and user indices, and verify LLM on startup."""
-    app.state.index = LanceIndex.load(LanceIndexConfig())
+    app.state.items_index = LanceIndex.load(LanceIndexConfig())
     app.state.users_index = LanceIndex.load(
         LanceIndexConfig(table_name=settings.users_table_name)
     )
     app.state.llm_ready = await check_llm()
     logger.info(
         "app ready: {} items, {} users, llm_ready={}",
-        app.state.index.table.count_rows(),
+        app.state.items_index.table.count_rows(),
         app.state.users_index.table.count_rows(),
         app.state.llm_ready,
     )
@@ -47,9 +47,9 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 app = FastAPI(title="Agentic Recommender", lifespan=lifespan)
 
 
-def get_index() -> LanceIndex:
+def get_items_index() -> LanceIndex:
     """Dependency: return the items LanceIndex from app state."""
-    return app.state.index
+    return app.state.items_index
 
 
 def get_users_index() -> LanceIndex:
@@ -57,17 +57,17 @@ def get_users_index() -> LanceIndex:
     return app.state.users_index
 
 
-IndexDep = Annotated[LanceIndex, Depends(get_index)]
+ItemsIndexDep = Annotated[LanceIndex, Depends(get_items_index)]
 UsersIndexDep = Annotated[LanceIndex, Depends(get_users_index)]
 
 
 @app.get("/healthz")
-async def healthz(index: IndexDep, users_index: UsersIndexDep) -> dict:
+async def healthz(items_index: ItemsIndexDep, users_index: UsersIndexDep) -> dict:
     """Return service health status."""
     return {
         "status": "ok",
-        "index_ready": index.table is not None,
-        "num_items": index.table.count_rows() if index.table else 0,
+        "index_ready": items_index.table is not None,
+        "num_items": items_index.table.count_rows() if items_index.table else 0,
         "num_users": users_index.table.count_rows() if users_index.table else 0,
         "llm_ready": app.state.llm_ready,
     }
@@ -86,9 +86,11 @@ async def get_info() -> InfoResponse:
 @app.post("/recommend")
 @app.post("/recommend/user")
 @logger.catch(reraise=True)
-async def recommend(request: RecommendRequest, *, index: IndexDep) -> RecommendResponse:
+async def recommend(
+    request: RecommendRequest, *, items_index: ItemsIndexDep
+) -> RecommendResponse:
     """Generate user-based recommendations via the ARAG agent."""
-    deps = AgentDeps(index=index, request=request)
+    deps = AgentDeps(index=items_index, request=request)
     response = await agent.run(instructions=USER_INSTRUCTIONS, deps=deps)
     logger.info("recommend: {} items", len(response.output.items))
     return response.output
@@ -97,10 +99,10 @@ async def recommend(request: RecommendRequest, *, index: IndexDep) -> RecommendR
 @app.post("/recommend/item")
 @logger.catch(reraise=True)
 async def recommend_item(
-    request: RecommendRequest, *, index: IndexDep
+    request: RecommendRequest, *, items_index: ItemsIndexDep
 ) -> RecommendResponse:
     """Generate item-based (similar items) recommendations via the ARAG agent."""
-    deps = AgentDeps(index=index, request=request)
+    deps = AgentDeps(index=items_index, request=request)
     response = await agent.run(instructions=ITEM_INSTRUCTIONS, deps=deps)
     logger.info("recommend_item: {} items", len(response.output.items))
     return response.output
@@ -120,20 +122,20 @@ async def recommend_user_id(
     user_id: str,
     limit: int = 10,
     *,
+    items_index: ItemsIndexDep,
     users_index: UsersIndexDep,
-    index: IndexDep,
 ) -> RecommendResponse:
     """Look up a user by ID and generate recommendations."""
     user = await get_user(user_id, users_index=users_index)
     user.history = user.history[-20:]
     request = RecommendRequest.model_validate({**user.model_dump(), "limit": limit})
-    return await recommend(request, index=index)
+    return await recommend(request, items_index=items_index)
 
 
 @app.get("/items/{item_id}")
-async def get_item(item_id: str, *, index: IndexDep) -> ItemResponse:
+async def get_item(item_id: str, *, items_index: ItemsIndexDep) -> ItemResponse:
     """Look up an item by ID."""
-    result = index.get_ids([item_id])
+    result = items_index.get_ids([item_id])
     if len(result) == 0:
         raise HTTPException(status_code=404, detail=f"Item {item_id} not found")
     return ItemResponse.model_validate(result[0])
@@ -141,12 +143,12 @@ async def get_item(item_id: str, *, index: IndexDep) -> ItemResponse:
 
 @app.post("/items/{item_id}/recommend")
 async def recommend_item_id(
-    item_id: str, limit: int = 10, *, index: IndexDep
+    item_id: str, limit: int = 10, *, items_index: ItemsIndexDep
 ) -> RecommendResponse:
     """Look up an item by ID and generate similar-item recommendations."""
-    item = await get_item(item_id, index=index)
+    item = await get_item(item_id, items_index=items_index)
     request = RecommendRequest.model_validate({**item.model_dump(), "limit": limit})
-    return await recommend_item(request, index=index)
+    return await recommend_item(request, items_index=items_index)
 
 
 def main(limit: int = 5) -> None:
@@ -196,7 +198,7 @@ def main(limit: int = 5) -> None:
         rich.print(resp.json())
 
         item_ids = (
-            app.state.index.table.search()
+            app.state.items_index.table.search()
             .select(["id"])
             .to_arrow()
             .column("id")

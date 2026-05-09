@@ -10,7 +10,7 @@ from agentic_rec.index import LanceIndex, LanceIndexConfig
 
 # ── shared integration fixtures ────────────────────────────────────────────
 
-EMBEDDING_DIM = 384
+EMBEDDING_DIM = 768
 
 
 @pytest.fixture(scope="session")
@@ -25,6 +25,9 @@ def test_dataset() -> datasets.Dataset:
                 f"{'love' if i % 3 == 0 else 'adventure'}"
             ),
             "vector": rng.random(EMBEDDING_DIM).astype(np.float32).tolist(),
+            "rating": round(rng.uniform(1.0, 5.0), 1),
+            "genres": ["Comedy", "Drama"] if i % 2 == 0 else ["Action"],
+            "metadata": {"year": 2000 + i % 25, "studio": f"Studio {i % 5}"},
         }
         for i in range(100)
     ]
@@ -47,23 +50,7 @@ def indexed_index(
     return index
 
 
-# ── schema tests ───────────────────────────────────────────────────────────
-
-
-class TestBuildSchema:
-    def test_schema_fields(self, lance_config: LanceIndexConfig) -> None:
-        from lancedb.pydantic import LanceModel
-
-        index = LanceIndex(lance_config)
-        schema = index.schema
-        assert issubclass(schema, LanceModel)
-        assert "id" in schema.field_names()
-        assert "text" in schema.field_names()
-        assert "vector" in schema.field_names()
-
-    def test_schema_cached(self, lance_config: LanceIndexConfig) -> None:
-        index = LanceIndex(lance_config)
-        assert index.schema is index.schema
+# ── index data tests ──────────────────────────────────────────────────────
 
 
 class TestIndexData:
@@ -78,6 +65,9 @@ class TestIndexData:
         assert "id" in cols
         assert "text" in cols
         assert "vector" in cols
+        assert "rating" in cols
+        assert "genres" in cols
+        assert "metadata" in cols
 
     def test_overwrite_false_skips(
         self, indexed_index: LanceIndex, test_dataset: datasets.Dataset

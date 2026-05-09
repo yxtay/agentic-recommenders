@@ -7,11 +7,10 @@ if TYPE_CHECKING:
     from collections.abc import Iterator
 
 import datasets
-import pandas as pd
 import pytest
 from fastapi.testclient import TestClient
 
-from agentic_rec.app import app, get_index, get_userid2idx, get_users
+from agentic_rec.app import app, get_items_index, get_users_index
 from agentic_rec.models import ItemRecommended, RecommendResponse
 
 
@@ -25,8 +24,10 @@ def mock_index() -> MagicMock:
 
 
 @pytest.fixture
-def mock_users() -> datasets.Dataset:
-    return datasets.Dataset.from_dict(
+def mock_users_index() -> MagicMock:
+    users_index = MagicMock()
+    users_index.table.count_rows.return_value = 1
+    users_index.get_ids.return_value = datasets.Dataset.from_dict(
         {
             "id": ["1"],
             "text": ["25-year-old male, software engineer"],
@@ -42,11 +43,7 @@ def mock_users() -> datasets.Dataset:
             ],
         }
     )
-
-
-@pytest.fixture
-def mock_userid2idx() -> pd.Series:
-    return pd.Series([0], index=["1"])
+    return users_index
 
 
 @pytest.fixture
@@ -63,12 +60,9 @@ def mock_agent_response() -> RecommendResponse:
 
 
 @pytest.fixture
-def client(
-    mock_index: MagicMock, mock_users: datasets.Dataset, mock_userid2idx: pd.Series
-) -> Iterator[TestClient]:
-    app.dependency_overrides[get_index] = lambda: mock_index
-    app.dependency_overrides[get_users] = lambda: mock_users
-    app.dependency_overrides[get_userid2idx] = lambda: mock_userid2idx
+def client(mock_index: MagicMock, mock_users_index: MagicMock) -> Iterator[TestClient]:
+    app.dependency_overrides[get_items_index] = lambda: mock_index
+    app.dependency_overrides[get_users_index] = lambda: mock_users_index
     yield TestClient(app)
     app.dependency_overrides.clear()
 
@@ -92,7 +86,10 @@ class TestGetUser:
         assert "text" in data
         assert "history" in data
 
-    def test_not_found(self, client: TestClient) -> None:
+    def test_not_found(self, client: TestClient, mock_users_index: MagicMock) -> None:
+        mock_users_index.get_ids.return_value = datasets.Dataset.from_dict(
+            {"id": [], "text": [], "history": []}
+        )
         resp = client.get("/users/999")
         assert resp.status_code == 404
 
@@ -143,7 +140,12 @@ class TestRecommendUser:
         data = resp.json()
         assert "items" in data
 
-    def test_user_not_found(self, client: TestClient) -> None:
+    def test_user_not_found(
+        self, client: TestClient, mock_users_index: MagicMock
+    ) -> None:
+        mock_users_index.get_ids.return_value = datasets.Dataset.from_dict(
+            {"id": [], "text": [], "history": []}
+        )
         resp = client.post("/users/999/recommend")
         assert resp.status_code == 404
 

@@ -4,7 +4,7 @@ import datetime
 import math
 import shutil
 from functools import cached_property
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 import datasets
 import lancedb
@@ -14,9 +14,6 @@ from loguru import logger
 from sqlalchemy import column, literal
 
 from agentic_rec.settings import settings
-
-if TYPE_CHECKING:
-    from lancedb.pydantic import LanceModel
 
 
 class LanceIndexConfig(pydantic.BaseModel):
@@ -47,17 +44,6 @@ class LanceIndex:
                 device=self.config.embedder_device,
             )
         )
-
-    @cached_property
-    def schema(self) -> type[LanceModel]:
-        from lancedb.pydantic import LanceModel, Vector
-
-        class ItemSchema(LanceModel):
-            id: str
-            text: str = self.embedder.SourceField()
-            vector: Vector(self.embedder.ndims()) = self.embedder.VectorField()  # type: ignore[valid-type]
-
-        return ItemSchema
 
     @cached_property
     def reranker(self) -> Any:  # noqa: ANN401
@@ -92,14 +78,22 @@ class LanceIndex:
     def index_data(
         self, dataset: datasets.Dataset, *, overwrite: bool = False
     ) -> lancedb.table.Table:
-        """Embed dataset and create table with scalar, FTS, and vector indices."""
+        """Embed dataset and create table with scalar, FTS, and vector indices.
+
+        All columns from the dataset are indexed. The schema is inferred from
+        the dataset's PyArrow schema (supports nested list/struct types).
+        The ``id`` and ``text`` columns are required; a ``vector`` column is
+        computed automatically via the configured embedder.
+        """
         if self.table is not None and not overwrite:
             return self.table
 
         import pyarrow as pa
+        from lancedb.embeddings import EmbeddingFunctionConfig
+
+        arrow_data = dataset.data
 
         # Scalar index requires pa.string(), not large_string
-        arrow_data = dataset.select_columns(["id", "text"]).data
         id_idx = arrow_data.schema.get_field_index("id")
         if arrow_data.schema.field("id").type != pa.string():
             arrow_data = arrow_data.cast(
@@ -110,7 +104,13 @@ class LanceIndex:
         self.table = db.create_table(
             self.config.table_name,
             data=arrow_data.to_batches(max_chunksize=1024),
-            schema=self.schema,  # type: ignore[arg-type]
+            embedding_functions=[
+                EmbeddingFunctionConfig(
+                    source_column="text",
+                    vector_column="vector",
+                    function=self.embedder,
+                )
+            ],
             mode="overwrite",
         )
 

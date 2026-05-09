@@ -88,11 +88,26 @@ with varied queries for diversity.
 Async function that creates a throwaway agent and sends a trivial prompt. Returns `True`
 if the LLM responds, `False` on any error. Used at app startup to verify API connectivity.
 
-### 10. Write tests
+### 10. Add CLI entry point
+
+Define `main()` function as a sanity check: load users from parquet, sample a random user,
+build a `RecommendRequest` from their data (truncate history to 20), run agent, print results.
+
+Register in `pyproject.toml` under `[project.scripts]`:
+`agent = "agentic_rec.agent:main"`. Uses `jsonargparse.auto_cli(main)` for CLI arg parsing.
+
+### 11. Write tests
 
 - **Model tests**: field defaults, required fields, validation.
 - **Tool unit tests**: mock the index, verify correct delegation and return types.
 - **Agent creation tests**: verify tools are registered, output type is set.
+
+---
+
+## Conventions
+
+- **`@logger.catch(reraise=True)`** on tool functions for structured error logging.
+- **Deferred imports** inside `main()` for heavy packages. Suppress ruff `PLC0415`.
 
 ---
 

@@ -92,7 +92,16 @@ Convenience route: look up item, build `RecommendRequest(text=item_text, history
 delegate to the `/recommend/item` handler. Cold-start mode — the item's text becomes the
 sole retrieval signal.
 
-### 12. Write route tests
+### 12. Add CLI entry point
+
+Define `main()` function as a sanity check: use `fastapi.testclient.TestClient` to hit
+every route (healthz, info, random user lookup + recommend, random item lookup + recommend).
+Print results with `rich`.
+
+Register in `pyproject.toml` under `[project.scripts]`:
+`app = "agentic_rec.app:main"`. Uses `jsonargparse.auto_cli(main)` for CLI arg parsing.
+
+### 13. Write route tests
 
 Mock the agent (patch `agent.run` to return a fixed `RecommendResponse`) so tests don't
 require an LLM API key. Test:
@@ -101,6 +110,13 @@ require an LLM API key. Test:
 - Recommend endpoints accept valid requests and return valid responses.
 - User/item lookup returns 404 for missing IDs.
 - Convenience recommend routes delegate correctly.
+
+---
+
+## Conventions
+
+- **`@logger.catch(reraise=True)`** on all route handlers for structured error logging.
+- **Deferred imports** inside `main()` for heavy packages. Suppress ruff `PLC0415`.
 
 ---
 

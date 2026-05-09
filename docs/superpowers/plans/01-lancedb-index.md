@@ -83,7 +83,15 @@ if `ids` is empty.
 - `load` (classmethod): create instance, call `open_table()`, return.
 - `open_table`: connect to LanceDB, open existing table by name.
 
-### 8. Write tests
+### 8. Add CLI entry point
+
+Define `main()` function as a sanity check: load data from parquet, build the index
+(or open existing), run a sample `get_ids` and `search` call, print results.
+
+Register in `pyproject.toml` under `[project.scripts]`:
+`index = "agentic_rec.index:main"`. Uses `jsonargparse.auto_cli(main)` for CLI arg parsing.
+
+### 9. Write tests
 
 - **Config tests**: defaults match settings, custom values propagate.
 - **Schema tests**: `LanceModel` subclass with correct field names, cached.
@@ -97,12 +105,18 @@ Use a session-scoped fixture with a small synthetic dataset (100 items) for inte
 
 ---
 
+## Conventions
+
+- **`@logger.catch(reraise=True)`** on public methods for structured error logging.
+- **Deferred imports** inside methods/properties for heavy packages (`lancedb`,
+  `sentence_transformers`). Suppress ruff `PLC0415`.
+
+---
+
 ## Design Notes
 
 - **SQL injection safety**: never interpolate user-supplied IDs into SQL strings directly.
   Always use `sqlalchemy.literal()` with `literal_binds=True` compilation.
-- **Deferred imports**: `lancedb`, `rerankers`, `sentence_transformers` are heavy; import
-  inside methods/properties, not at module level. Suppress ruff `PLC0415`.
 - **IVF_RQ over IVF_HNSW_PQ**: simpler, fewer hyperparameters, adequate for MovieLens scale.
 - **`datasets.Dataset` as return type**: provides Arrow-backed memory efficiency and
   interoperability with the rest of the pipeline.

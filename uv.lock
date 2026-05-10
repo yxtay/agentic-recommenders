@@ -56,7 +56,7 @@ dependencies = [
     { name = "jsonargparse", extra = ["signatures"] },
     { name = "lancedb", extra = ["pylance"] },
     { name = "loguru" },
-    { name = "polars" },
+    { name = "polars", extra = ["pandas"] },
     { name = "pydantic-ai" },
     { name = "pydantic-settings" },
     { name = "rerankers", extra = ["pylate", "transformers"] },
@@ -80,7 +80,7 @@ requires-dist = [
     { name = "jsonargparse", extras = ["signatures"], specifier = "~=4.48" },
     { name = "lancedb", extras = ["pylance"], specifier = ">=0.19,<1.0" },
     { name = "loguru", specifier = ">=0.7,<1.0" },
-    { name = "polars", specifier = "~=1.40" },
+    { name = "polars", extras = ["pandas"], specifier = "~=1.40" },
     { name = "pydantic-ai", specifier = "~=1.43" },
     { name = "pydantic-settings", specifier = "~=2.0" },
     { name = "rerankers", extras = ["pylate", "transformers"], specifier = ">=0.9,<1.0" },
@@ -2421,6 +2421,12 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/b3/8c/bc9bc948058348ed43117cecc3007cd608f395915dae8a00974579a5dab1/polars-1.40.1.tar.gz", hash = "sha256:ab2694134b137596b5a59bfd7b4c54ebbc9b59f9403127f18e32d363777552e8", size = 733574, upload-time = "2026-04-22T19:15:55.507Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/ea/91/74fc60d94488685a92ac9d49d7ec55f3e91fe9b77942a6235a5fa7f249c3/polars-1.40.1-py3-none-any.whl", hash = "sha256:c0f861219d1319cdea45c4ce4d30355a47176b8f98dcedf95ea8269f131b8abd", size = 828723, upload-time = "2026-04-22T19:14:25.452Z" },
+]
+
+[package.optional-dependencies]
+pandas = [
+    { name = "pandas" },
+    { name = "pyarrow" },
 ]
 
 [[package]]

@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-import io
 import pathlib
 import shutil
 import tempfile
 
+import pandas as pd
 import polars as pl
 from loguru import logger
 
@@ -13,16 +13,20 @@ from agentic_rec.settings import settings
 
 def read_dat(
     path: pathlib.Path,
-    schema: dict[str, pl.DataType],
+    dtype: dict[str, str],
     encoding: str = "utf-8",
 ) -> pl.DataFrame:
     """Read a :: delimited .dat file as a Polars DataFrame."""
-    raw = path.read_bytes().decode(encoding).replace("::", "\t")
-    return pl.read_csv(
-        io.BytesIO(raw.encode()),
-        separator="\t",
-        has_header=False,
-        schema=schema,
+    return pl.from_pandas(
+        pd.read_csv(
+            path,
+            sep="::",
+            header=None,
+            names=list(dtype.keys()),
+            dtype=dtype,
+            engine="python",
+            encoding=encoding,
+        )
     )
 
 
@@ -150,9 +154,9 @@ def load_items(src_dir: str = settings.data_dir) -> pl.LazyFrame:
         ``item_text``.
     """
     items_dat = pathlib.Path(src_dir, "ml-1m", "movies.dat")
-    schema = {"movie_id": pl.Utf8, "title": pl.Utf8, "genres": pl.Utf8}
+    dtype = {"movie_id": "str", "title": "str", "genres": "str"}
     items = (
-        read_dat(items_dat, schema, encoding="iso-8859-1")
+        read_dat(items_dat, dtype, encoding="iso-8859-1")
         .rename({"movie_id": "id"})
         .with_columns(genres=pl.col("genres").str.split("|"))
         .with_columns(text=pl.struct("title", "genres").struct.json_encode())
@@ -176,15 +180,15 @@ def load_users(src_dir: str = settings.data_dir) -> pl.LazyFrame:
         ``user_text`` columns.
     """
     users_dat = pathlib.Path(src_dir, "ml-1m", "users.dat")
-    schema = {
-        "user_id": pl.Utf8,
-        "gender": pl.Utf8,
-        "age": pl.Int32,
-        "occupation": pl.Int32,
-        "zipcode": pl.Utf8,
+    dtype = {
+        "user_id": "str",
+        "gender": "str",
+        "age": "int32",
+        "occupation": "int32",
+        "zipcode": "str",
     }
     users = (
-        read_dat(users_dat, schema)
+        read_dat(users_dat, dtype)
         .rename({"user_id": "id"})
         .with_columns(
             text=pl.struct(
@@ -212,14 +216,14 @@ def load_events(src_dir: str = settings.data_dir) -> pl.LazyFrame:
         pl.LazyFrame: LazyFrame of event records.
     """
     events_dat = pathlib.Path(src_dir, "ml-1m", "ratings.dat")
-    schema = {
-        "user_id": pl.Utf8,
-        "movie_id": pl.Utf8,
-        "rating": pl.Int32,
-        "timestamp": pl.Int32,
+    dtype = {
+        "user_id": "str",
+        "movie_id": "str",
+        "rating": "int32",
+        "timestamp": "int32",
     }
     events = (
-        read_dat(events_dat, schema)
+        read_dat(events_dat, dtype)
         .rename({"movie_id": "item_id", "rating": "event_value"})
         .with_columns(
             event_datetime=pl.from_epoch("timestamp"),

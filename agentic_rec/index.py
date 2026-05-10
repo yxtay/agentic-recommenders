@@ -109,7 +109,7 @@ class LanceIndex:
         self.table.create_scalar_index("id")
         self.table.create_fts_index("text")
 
-        num_partitions = 2 ** int(math.log2(data.num_rows) / 2)
+        num_partitions = 2 ** int(math.log2(max(1, data.num_rows)) / 2)
         self.table.create_index(
             vector_column_name="vector",
             metric="cosine",
@@ -160,9 +160,8 @@ class LanceIndex:
             query = query.where(filter_str, prefilter=True)
 
         result = query.to_arrow()
-        idx = result.schema.get_field_index("_relevance_score")
         return result.rename_columns(
-            [*result.schema.names[:idx], "score", *result.schema.names[idx + 1 :]]
+            ["score" if n == "_relevance_score" else n for n in result.schema.names]
         )
 
     def get_ids(self, ids: list[str]) -> pa.Table:

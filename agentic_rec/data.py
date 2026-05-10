@@ -13,15 +13,21 @@ from loguru import logger
 from agentic_rec.settings import settings
 
 
-def _read_dat(
-    path: pathlib.Path, column_names: list[str], encoding: str = "utf-8"
+def read_dat(
+    path: pathlib.Path,
+    dtype: dict[str, pa.DataType],
+    encoding: str = "utf-8",
 ) -> pa.Table:
     """Read a :: delimited .dat file as a PyArrow table."""
     raw = path.read_bytes().decode(encoding).replace("::", "\t")
-    opts = pyarrow.csv.ReadOptions(column_names=column_names)
-    parse = pyarrow.csv.ParseOptions(delimiter="\t")
+    read_opts = pyarrow.csv.ReadOptions(column_names=list(dtype.keys()))
+    parse_opts = pyarrow.csv.ParseOptions(delimiter="\t")
+    convert_opts = pyarrow.csv.ConvertOptions(column_types=dtype)
     return pyarrow.csv.read_csv(
-        io.BytesIO(raw.encode()), read_options=opts, parse_options=parse
+        io.BytesIO(raw.encode()),
+        read_options=read_opts,
+        parse_options=parse_opts,
+        convert_options=convert_opts,
     )
 
 
@@ -149,11 +155,9 @@ def load_items(src_dir: str = settings.data_dir) -> pl.LazyFrame:
         ``item_text``.
     """
     items_dat = pathlib.Path(src_dir, "ml-1m", "movies.dat")
+    dtype = {"movie_id": pa.string(), "title": pa.string(), "genres": pa.string()}
     items = (
-        pl.from_arrow(
-            _read_dat(items_dat, ["movie_id", "title", "genres"], encoding="iso-8859-1")
-        )
-        .cast({"movie_id": pl.Utf8, "title": pl.Utf8, "genres": pl.Utf8})
+        pl.from_arrow(read_dat(items_dat, dtype, encoding="iso-8859-1"))
         .rename({"movie_id": "id"})
         .with_columns(genres=pl.col("genres").str.split("|"))
         .with_columns(text=pl.struct("title", "genres").struct.json_encode())
@@ -177,19 +181,15 @@ def load_users(src_dir: str = settings.data_dir) -> pl.LazyFrame:
         ``user_text`` columns.
     """
     users_dat = pathlib.Path(src_dir, "ml-1m", "users.dat")
+    dtype = {
+        "user_id": pa.string(),
+        "gender": pa.string(),
+        "age": pa.int32(),
+        "occupation": pa.int32(),
+        "zipcode": pa.string(),
+    }
     users = (
-        pl.from_arrow(
-            _read_dat(users_dat, ["user_id", "gender", "age", "occupation", "zipcode"])
-        )
-        .cast(
-            {
-                "user_id": pl.Utf8,
-                "gender": pl.Utf8,
-                "age": pl.Int32,
-                "occupation": pl.Int32,
-                "zipcode": pl.Utf8,
-            }
-        )
+        pl.from_arrow(read_dat(users_dat, dtype))
         .rename({"user_id": "id"})
         .with_columns(
             text=pl.struct(
@@ -217,18 +217,14 @@ def load_events(src_dir: str = settings.data_dir) -> pl.LazyFrame:
         pl.LazyFrame: LazyFrame of event records.
     """
     events_dat = pathlib.Path(src_dir, "ml-1m", "ratings.dat")
+    dtype = {
+        "user_id": pa.string(),
+        "movie_id": pa.string(),
+        "rating": pa.int32(),
+        "timestamp": pa.int32(),
+    }
     events = (
-        pl.from_arrow(
-            _read_dat(events_dat, ["user_id", "movie_id", "rating", "timestamp"])
-        )
-        .cast(
-            {
-                "user_id": pl.Utf8,
-                "movie_id": pl.Utf8,
-                "rating": pl.Int32,
-                "timestamp": pl.Int32,
-            }
-        )
+        pl.from_arrow(read_dat(events_dat, dtype))
         .rename({"movie_id": "item_id", "rating": "event_value"})
         .with_columns(
             event_datetime=pl.from_epoch("timestamp"),

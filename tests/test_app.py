@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -10,7 +10,7 @@ import pyarrow as pa
 import pytest
 from fastapi.testclient import TestClient
 
-from agentic_rec.app import app, get_items_index, get_users_index
+from agentic_rec.app import app, get_agent, get_items_index, get_users_index
 from agentic_rec.models import ItemRecommended, RecommendResponse
 
 
@@ -60,9 +60,19 @@ def mock_agent_response() -> RecommendResponse:
 
 
 @pytest.fixture
-def client(mock_index: MagicMock, mock_users_index: MagicMock) -> Iterator[TestClient]:
+def mock_agent(mock_agent_response: RecommendResponse) -> MagicMock:
+    agent = MagicMock()
+    agent.run = AsyncMock(return_value=MagicMock(output=mock_agent_response))
+    return agent
+
+
+@pytest.fixture
+def client(
+    mock_index: MagicMock, mock_users_index: MagicMock, mock_agent: MagicMock
+) -> Iterator[TestClient]:
     app.dependency_overrides[get_items_index] = lambda: mock_index
     app.dependency_overrides[get_users_index] = lambda: mock_users_index
+    app.dependency_overrides[get_agent] = lambda: mock_agent
     yield TestClient(app)
     app.dependency_overrides.clear()
 
@@ -110,16 +120,11 @@ class TestGetItem:
 
 
 class TestRecommend:
-    def test_post_recommend(
-        self, client: TestClient, mock_agent_response: RecommendResponse
-    ) -> None:
-        mock_run = AsyncMock()
-        mock_run.return_value.output = mock_agent_response
-        with patch("agentic_rec.app.agent.run", mock_run):
-            resp = client.post(
-                "/recommend",
-                json={"text": "likes sci-fi", "limit": 5},
-            )
+    def test_post_recommend(self, client: TestClient) -> None:
+        resp = client.post(
+            "/recommend",
+            json={"text": "likes sci-fi", "limit": 5},
+        )
         assert resp.status_code == 200
         data = resp.json()
         assert "items" in data
@@ -127,13 +132,8 @@ class TestRecommend:
 
 
 class TestRecommendUser:
-    def test_recommend_for_user(
-        self, client: TestClient, mock_agent_response: RecommendResponse
-    ) -> None:
-        mock_run = AsyncMock()
-        mock_run.return_value.output = mock_agent_response
-        with patch("agentic_rec.app.agent.run", mock_run):
-            resp = client.post("/users/1/recommend?limit=5")
+    def test_recommend_for_user(self, client: TestClient) -> None:
+        resp = client.post("/users/1/recommend?limit=5")
         assert resp.status_code == 200
         data = resp.json()
         assert "items" in data
@@ -149,13 +149,8 @@ class TestRecommendUser:
 
 
 class TestRecommendItem:
-    def test_recommend_for_item(
-        self, client: TestClient, mock_agent_response: RecommendResponse
-    ) -> None:
-        mock_run = AsyncMock()
-        mock_run.return_value.output = mock_agent_response
-        with patch("agentic_rec.app.agent.run", mock_run):
-            resp = client.post("/items/42/recommend?limit=5")
+    def test_recommend_for_item(self, client: TestClient) -> None:
+        resp = client.post("/items/42/recommend?limit=5")
         assert resp.status_code == 200
         data = resp.json()
         assert "items" in data

@@ -159,7 +159,7 @@ class LanceIndex:
             filter_str = str(expr.compile(compile_kwargs={"literal_binds": True}))
             query = query.where(filter_str, prefilter=True)
 
-        result = query.to_arrow()
+        result = query.to_arrow().drop_columns(["vector"])
         return result.rename_columns(
             ["score" if n == "_relevance_score" else n for n in result.schema.names]
         )
@@ -173,7 +173,7 @@ class LanceIndex:
 
         expr = column("id").in_([literal(v) for v in ids])
         filter_str = str(expr.compile(compile_kwargs={"literal_binds": True}))
-        return self.table.search().where(filter_str).to_arrow()
+        return self.table.search().where(filter_str).to_arrow().drop_columns(["vector"])
 
 
 def main(
@@ -208,11 +208,11 @@ def main(
 
     sample_id = random.choice(data["id"].to_pylist())
     item = index.get_ids([sample_id])
-    rich.print(item.select(["id", "text"]).to_pylist()[0])
+    rich.print(item.to_pylist()[0])
 
     text = item.column("text")[0].as_py()
     results = index.search(text, exclude_ids=[sample_id], limit=5)
-    rich.print(results.drop(["vector"]).to_pylist())
+    rich.print(results.to_pylist())
 
 
 def cli() -> None:

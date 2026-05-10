@@ -3,6 +3,7 @@ from __future__ import annotations
 from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING, Annotated
 
+import pydantic_ai
 from fastapi import Depends, FastAPI, HTTPException
 from loguru import logger
 
@@ -10,7 +11,6 @@ from agentic_rec.agent import (
     ITEM_INSTRUCTIONS,
     USER_INSTRUCTIONS,
     AgentDeps,
-    agent,
     check_llm,
 )
 from agentic_rec.index import LanceIndex, LanceIndexConfig
@@ -57,8 +57,18 @@ def get_users_index() -> LanceIndex:
     return app.state.users_index
 
 
+def get_agent() -> pydantic_ai.Agent[AgentDeps, RecommendResponse]:
+    """Dependency: return the recommendation agent."""
+    from agentic_rec.agent import agent
+
+    return agent
+
+
 ItemsIndexDep = Annotated[LanceIndex, Depends(get_items_index)]
 UsersIndexDep = Annotated[LanceIndex, Depends(get_users_index)]
+AgentDep = Annotated[
+    pydantic_ai.Agent[AgentDeps, RecommendResponse], Depends(get_agent)
+]
 
 
 @app.get("/healthz")
@@ -87,11 +97,11 @@ async def get_info() -> InfoResponse:
 @app.post("/recommend/user")
 @logger.catch(reraise=True)
 async def recommend(
-    request: RecommendRequest, *, items_index: ItemsIndexDep
+    request: RecommendRequest, *, items_index: ItemsIndexDep, rec_agent: AgentDep
 ) -> RecommendResponse:
     """Generate user-based recommendations via the ARAG agent."""
     deps = AgentDeps(index=items_index, request=request)
-    response = await agent.run(instructions=USER_INSTRUCTIONS, deps=deps)
+    response = await rec_agent.run(instructions=USER_INSTRUCTIONS, deps=deps)
     logger.info("recommend: {} items", len(response.output.items))
     return response.output
 
@@ -99,11 +109,11 @@ async def recommend(
 @app.post("/recommend/item")
 @logger.catch(reraise=True)
 async def recommend_item(
-    request: RecommendRequest, *, items_index: ItemsIndexDep
+    request: RecommendRequest, *, items_index: ItemsIndexDep, rec_agent: AgentDep
 ) -> RecommendResponse:
     """Generate item-based (similar items) recommendations via the ARAG agent."""
     deps = AgentDeps(index=items_index, request=request)
-    response = await agent.run(instructions=ITEM_INSTRUCTIONS, deps=deps)
+    response = await rec_agent.run(instructions=ITEM_INSTRUCTIONS, deps=deps)
     logger.info("recommend_item: {} items", len(response.output.items))
     return response.output
 
@@ -124,12 +134,13 @@ async def recommend_user_id(
     *,
     items_index: ItemsIndexDep,
     users_index: UsersIndexDep,
+    rec_agent: AgentDep,
 ) -> RecommendResponse:
     """Look up a user by ID and generate recommendations."""
     user = await get_user(user_id, users_index=users_index)
     user.history = user.history[-20:]
     request = RecommendRequest.model_validate({**user.model_dump(), "limit": limit})
-    return await recommend(request, items_index=items_index)
+    return await recommend(request, items_index=items_index, rec_agent=rec_agent)
 
 
 @app.get("/items/{item_id}")
@@ -143,12 +154,12 @@ async def get_item(item_id: str, *, items_index: ItemsIndexDep) -> ItemResponse:
 
 @app.post("/items/{item_id}/recommend")
 async def recommend_item_id(
-    item_id: str, limit: int = 10, *, items_index: ItemsIndexDep
+    item_id: str, limit: int = 10, *, items_index: ItemsIndexDep, rec_agent: AgentDep
 ) -> RecommendResponse:
     """Look up an item by ID and generate similar-item recommendations."""
     item = await get_item(item_id, items_index=items_index)
     request = RecommendRequest.model_validate({**item.model_dump(), "limit": limit})
-    return await recommend_item(request, items_index=items_index)
+    return await recommend_item(request, items_index=items_index, rec_agent=rec_agent)
 
 
 def main(limit: int = 5) -> None:
@@ -168,16 +179,6 @@ def main(limit: int = 5) -> None:
     )
 
     with TestClient(app, raise_server_exceptions=False) as client:
-        rich.print("[bold]GET /healthz[/bold]")
-        resp = client.get("/healthz")
-        resp.raise_for_status()
-        rich.print(resp.json())
-
-        rich.print("\n[bold]GET /info[/bold]")
-        resp = client.get("/info")
-        resp.raise_for_status()
-        rich.print(resp.json())
-
         user_count = app.state.users_index.table.count_rows()
         user_id = (
             app.state.users_index.table.search()
@@ -187,32 +188,13 @@ def main(limit: int = 5) -> None:
             .to_list()[0]["id"]
         )
 
-        rich.print(f"\n[bold]GET /users/{user_id}[/bold]")
+        logger.info(f"GET /users/{user_id}")
         resp = client.get(f"/users/{user_id}")
         resp.raise_for_status()
         rich.print(resp.json())
 
-        rich.print(f"\n[bold]POST /users/{user_id}/recommend?limit={limit}[/bold]")
+        logger.info(f"POST /users/{user_id}/recommend?limit={limit}")
         resp = client.post(f"/users/{user_id}/recommend?limit={limit}")
-        resp.raise_for_status()
-        rich.print(resp.json())
-
-        item_count = app.state.items_index.table.count_rows()
-        item_id = (
-            app.state.items_index.table.search()
-            .select(["id"])
-            .offset(random.randint(0, item_count - 1))
-            .limit(1)
-            .to_list()[0]["id"]
-        )
-
-        rich.print(f"\n[bold]GET /items/{item_id}[/bold]")
-        resp = client.get(f"/items/{item_id}")
-        resp.raise_for_status()
-        rich.print(resp.json())
-
-        rich.print(f"\n[bold]POST /items/{item_id}/recommend?limit={limit}[/bold]")
-        resp = client.post(f"/items/{item_id}/recommend?limit={limit}")
         resp.raise_for_status()
         rich.print(resp.json())
 

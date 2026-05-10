@@ -2,6 +2,9 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+Do not duplicate information that belongs to and is already in `README.md` or `docs/design.md`.
+Keep this file focused on workflow, commands, and conventions needed by Claude Code during development.
+
 ## Session start
 
 At the start of every conversation, read `README.md` and `CLAUDE.md` in full before doing anything else.
@@ -49,19 +52,6 @@ uv run pytest tests/test_index.py::TestSearch::test_returns_dataset -v
 ## Architecture
 
 See `README.md` for overview and `docs/design.md` for full spec.
-
-### Data columns
-
-All Parquet columns are prefixed by entity (`item_id`, `item_text`, `user_id`, `user_text`, `event_value`,
-`event_datetime`). The LanceDB index uses unprefixed names: `id`, `text`, `vector`.
-Additional columns (e.g. `history`, `target`, split flags) are preserved with their original PyArrow types.
-
-### App state
-
-The FastAPI app loads two `LanceIndex` instances on startup:
-
-- `app.state.items_index` — items table (default `LanceIndexConfig()`)
-- `app.state.users_index` — users table (`LanceIndexConfig(table_name="users")`)
 
 ## Key conventions
 

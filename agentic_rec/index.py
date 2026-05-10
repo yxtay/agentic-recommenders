@@ -127,21 +127,17 @@ class LanceIndex:
         )
         return self.table
 
-    @classmethod
     def index_parquet(
-        cls,
+        self,
         parquet_path: str,
-        config: LanceIndexConfig,
         *,
         overwrite: bool = False,
-    ) -> LanceIndex:
+    ) -> lancedb.table.Table:
         """Read a Parquet file (memory-mapped) and build the LanceDB index."""
         import pyarrow.parquet as pq
 
         data = pq.read_table(parquet_path, memory_map=True)
-        index = cls(config)
-        index.index_data(data, overwrite=overwrite)
-        return index
+        return self.index_data(data, overwrite=overwrite)
 
     def search(
         self,
@@ -199,14 +195,14 @@ def main(
     agentic_rec.data.main(overwrite=False)
 
     config = LanceIndexConfig(lancedb_path=lancedb_path, table_name=table_name)
+    index = LanceIndex(config)
     if overwrite:
-        index = LanceIndex.index_parquet(parquet_path, config, overwrite=overwrite)
+        index.index_parquet(parquet_path, overwrite=overwrite)
     else:
-        index = LanceIndex(config)
         try:
             index.open_table()
         except ValueError:
-            index = LanceIndex.index_parquet(parquet_path, config)
+            index.index_parquet(parquet_path)
 
     data = pq.read_table(parquet_path, memory_map=True)
     logger.info("data loaded: {}, rows: {}", parquet_path, data.num_rows)

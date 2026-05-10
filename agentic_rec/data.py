@@ -1,14 +1,29 @@
 from __future__ import annotations
 
+import io
 import pathlib
 import shutil
 import tempfile
 
-import pandas as pd
 import polars as pl
+import pyarrow as pa
+import pyarrow.csv
 from loguru import logger
 
 from agentic_rec.settings import settings
+
+
+def _read_dat(
+    path: pathlib.Path, column_names: list[str], encoding: str = "utf-8"
+) -> pa.Table:
+    """Read a :: delimited .dat file as a PyArrow table."""
+    raw = path.read_bytes().decode(encoding).replace("::", "\t")
+    opts = pyarrow.csv.ReadOptions(column_names=column_names)
+    parse = pyarrow.csv.ParseOptions(delimiter="\t")
+    return pyarrow.csv.read_csv(
+        io.BytesIO(raw.encode()), read_options=opts, parse_options=parse
+    )
+
 
 ###
 # download data
@@ -134,18 +149,11 @@ def load_items(src_dir: str = settings.data_dir) -> pl.LazyFrame:
         ``item_text``.
     """
     items_dat = pathlib.Path(src_dir, "ml-1m", "movies.dat")
-    dtype = {"movie_id": "str", "title": "str", "genres": "str"}
     items = (
-        pd.read_csv(
-            items_dat,
-            sep="::",
-            header=None,
-            names=list(dtype.keys()),
-            dtype=dtype,
-            engine="python",
-            encoding="iso-8859-1",
+        pl.from_arrow(
+            _read_dat(items_dat, ["movie_id", "title", "genres"], encoding="iso-8859-1")
         )
-        .pipe(pl.from_pandas)
+        .cast({"movie_id": pl.Utf8, "title": pl.Utf8, "genres": pl.Utf8})
         .rename({"movie_id": "id"})
         .with_columns(genres=pl.col("genres").str.split("|"))
         .with_columns(text=pl.struct("title", "genres").struct.json_encode())
@@ -169,24 +177,19 @@ def load_users(src_dir: str = settings.data_dir) -> pl.LazyFrame:
         ``user_text`` columns.
     """
     users_dat = pathlib.Path(src_dir, "ml-1m", "users.dat")
-    dtype = {
-        "user_id": "str",
-        "gender": "str",
-        "age": "int32",
-        "occupation": "int32",
-        "zipcode": "str",
-    }
-
     users = (
-        pd.read_csv(
-            users_dat,
-            sep="::",
-            header=None,
-            names=list(dtype.keys()),
-            dtype=dtype,
-            engine="python",
+        pl.from_arrow(
+            _read_dat(users_dat, ["user_id", "gender", "age", "occupation", "zipcode"])
         )
-        .pipe(pl.from_pandas)
+        .cast(
+            {
+                "user_id": pl.Utf8,
+                "gender": pl.Utf8,
+                "age": pl.Int32,
+                "occupation": pl.Int32,
+                "zipcode": pl.Utf8,
+            }
+        )
         .rename({"user_id": "id"})
         .with_columns(
             text=pl.struct(
@@ -214,22 +217,18 @@ def load_events(src_dir: str = settings.data_dir) -> pl.LazyFrame:
         pl.LazyFrame: LazyFrame of event records.
     """
     events_dat = pathlib.Path(src_dir, "ml-1m", "ratings.dat")
-    dtype = {
-        "user_id": "str",
-        "movie_id": "str",
-        "rating": "int32",
-        "timestamp": "int32",
-    }
     events = (
-        pd.read_csv(
-            events_dat,
-            sep="::",
-            header=None,
-            names=list(dtype.keys()),
-            dtype=dtype,
-            engine="python",
+        pl.from_arrow(
+            _read_dat(events_dat, ["user_id", "movie_id", "rating", "timestamp"])
         )
-        .pipe(pl.from_pandas)
+        .cast(
+            {
+                "user_id": pl.Utf8,
+                "movie_id": pl.Utf8,
+                "rating": pl.Int32,
+                "timestamp": pl.Int32,
+            }
+        )
         .rename({"movie_id": "item_id", "rating": "event_value"})
         .with_columns(
             event_datetime=pl.from_epoch("timestamp"),

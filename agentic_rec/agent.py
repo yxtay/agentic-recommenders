@@ -47,8 +47,9 @@ Workflow:
 
 4. Ranking with explanations: from all candidates, select the limit items.
     Rank by relevance and diversity.
-    For each item, provide a concise explanation of why it is recommended.
-    Use short explanations such as "Similar to...", "Matches your interest in...", etc.
+    For each item, provide a concise explanation of why it is recommended,
+    such as due to stated or inferred preferences, or recent activity.
+    Use short explanations such as "Because you...", etc.
 
 Return a RecommendResponse with the ranked list of items.
 """

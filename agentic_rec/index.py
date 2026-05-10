@@ -11,14 +11,9 @@ import lancedb.table
 import pyarrow as pa
 import pydantic
 from loguru import logger
+from sqlalchemy import column, literal
 
 from agentic_rec.settings import settings
-
-
-def _sql_in(col: str, values: list[str], *, negate: bool = False) -> str:
-    quoted = ", ".join(f"'{v.replace(chr(39), chr(39) * 2)}'" for v in values)
-    op = "NOT IN" if negate else "IN"
-    return f"{col} {op} ({quoted})"
 
 
 class LanceIndexConfig(pydantic.BaseModel):
@@ -160,7 +155,9 @@ class LanceIndex:
         )
 
         if exclude_ids:
-            query = query.where(_sql_in("id", exclude_ids, negate=True), prefilter=True)
+            expr = column("id").not_in([literal(v) for v in exclude_ids])
+            filter_str = str(expr.compile(compile_kwargs={"literal_binds": True}))
+            query = query.where(filter_str, prefilter=True)
 
         result = query.to_arrow()
         idx = result.schema.get_field_index("_relevance_score")
@@ -175,7 +172,9 @@ class LanceIndex:
         if not ids:
             return self.table.head(0)
 
-        return self.table.search().where(_sql_in("id", ids)).to_arrow()
+        expr = column("id").in_([literal(v) for v in ids])
+        filter_str = str(expr.compile(compile_kwargs={"literal_binds": True}))
+        return self.table.search().where(filter_str).to_arrow()
 
 
 def main(

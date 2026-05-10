@@ -77,20 +77,22 @@ class TestIndexData:
 
 class TestSQLFilters:
     def test_exclude_filter_escapes_injection(self) -> None:
-        from agentic_rec.index import _sql_in
+        from sqlalchemy import column, literal
 
         ids = ["id1", "id2'--injection"]
-        filter_str = _sql_in("id", ids, negate=True)
+        expr = column("id").not_in([literal(v) for v in ids])
+        filter_str = str(expr.compile(compile_kwargs={"literal_binds": True}))
         assert "id NOT IN" in filter_str
         assert "'id1'" in filter_str
         # single-quote in value is doubled (SQL escaping), not left raw
         assert "id2''--injection" in filter_str
 
     def test_include_filter(self) -> None:
-        from agentic_rec.index import _sql_in
+        from sqlalchemy import column, literal
 
         ids = ["a", "b"]
-        filter_str = _sql_in("id", ids)
+        expr = column("id").in_([literal(v) for v in ids])
+        filter_str = str(expr.compile(compile_kwargs={"literal_binds": True}))
         assert "id IN" in filter_str
         assert "'a'" in filter_str
         assert "'b'" in filter_str

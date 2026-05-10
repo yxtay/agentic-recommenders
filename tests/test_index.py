@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import pathlib
 
-import datasets
 import numpy as np
+import pyarrow as pa
 import pytest
 
 from agentic_rec.index import LanceIndex, LanceIndexConfig
@@ -14,7 +14,7 @@ EMBEDDING_DIM = 768
 
 
 @pytest.fixture(scope="session")
-def test_dataset() -> datasets.Dataset:
+def test_dataset() -> pa.Table:
     rng = np.random.default_rng(42)
     items = [
         {
@@ -31,7 +31,7 @@ def test_dataset() -> datasets.Dataset:
         }
         for i in range(100)
     ]
-    return datasets.Dataset.from_list(items)
+    return pa.Table.from_pylist(items)
 
 
 @pytest.fixture(scope="session")
@@ -42,9 +42,7 @@ def lance_config(tmp_path_factory: pytest.TempPathFactory) -> LanceIndexConfig:
 
 
 @pytest.fixture(scope="session")
-def indexed_index(
-    lance_config: LanceIndexConfig, test_dataset: datasets.Dataset
-) -> LanceIndex:
+def indexed_index(lance_config: LanceIndexConfig, test_dataset: pa.Table) -> LanceIndex:
     index = LanceIndex(lance_config)
     index.index_data(test_dataset)
     return index
@@ -55,10 +53,10 @@ def indexed_index(
 
 class TestIndexData:
     def test_table_created(
-        self, indexed_index: LanceIndex, test_dataset: datasets.Dataset
+        self, indexed_index: LanceIndex, test_dataset: pa.Table
     ) -> None:
         assert indexed_index.table is not None
-        assert indexed_index.table.count_rows() == len(test_dataset)
+        assert indexed_index.table.count_rows() == test_dataset.num_rows
 
     def test_table_columns(self, indexed_index: LanceIndex) -> None:
         cols = indexed_index.table.schema.names
@@ -70,7 +68,7 @@ class TestIndexData:
         assert "metadata" in cols
 
     def test_overwrite_false_skips(
-        self, indexed_index: LanceIndex, test_dataset: datasets.Dataset
+        self, indexed_index: LanceIndex, test_dataset: pa.Table
     ) -> None:
         original_table = indexed_index.table
         indexed_index.index_data(test_dataset, overwrite=False)
@@ -101,40 +99,40 @@ class TestSQLFilters:
 
 
 class TestSearch:
-    def test_returns_dataset(self, indexed_index: LanceIndex) -> None:
+    def test_returns_table(self, indexed_index: LanceIndex) -> None:
         result = indexed_index.search("comedy film about love", limit=5)
-        assert isinstance(result, datasets.Dataset)
+        assert isinstance(result, pa.Table)
 
     def test_limit_respected(self, indexed_index: LanceIndex) -> None:
         result = indexed_index.search("drama about adventure", limit=5)
-        assert len(result) <= 5
+        assert result.num_rows <= 5
 
     def test_exclude_ids(self, indexed_index: LanceIndex) -> None:
         result = indexed_index.search("comedy", exclude_ids=["0", "1", "2"], limit=10)
-        returned_ids = result["id"]
+        returned_ids = result.column("id").to_pylist()
         assert "0" not in returned_ids
         assert "1" not in returned_ids
         assert "2" not in returned_ids
 
     def test_no_exclude_ids_returns_results(self, indexed_index: LanceIndex) -> None:
         result = indexed_index.search("love story", limit=5)
-        assert len(result) > 0
+        assert result.num_rows > 0
 
 
 class TestGetIds:
     def test_returns_matching_rows(self, indexed_index: LanceIndex) -> None:
         result = indexed_index.get_ids(["0", "1", "2"])
-        assert isinstance(result, datasets.Dataset)
-        assert set(result["id"]) == {"0", "1", "2"}
+        assert isinstance(result, pa.Table)
+        assert set(result.column("id").to_pylist()) == {"0", "1", "2"}
 
     def test_missing_id_not_returned(self, indexed_index: LanceIndex) -> None:
         result = indexed_index.get_ids(["nonexistent-999"])
-        assert len(result) == 0
+        assert result.num_rows == 0
 
     def test_subset_returned(self, indexed_index: LanceIndex) -> None:
         result = indexed_index.get_ids(["5", "nonexistent-999"])
-        assert len(result) == 1
-        assert result["id"][0] == "5"
+        assert result.num_rows == 1
+        assert result.column("id")[0].as_py() == "5"
 
 
 class TestSaveLoad:

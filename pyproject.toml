@@ -12,7 +12,6 @@ authors = [
 license = "MIT"
 requires-python = ">=3.12,<4"
 dependencies = [
-  "datasets~=4.0",
   "fastapi[standard]>=0.136,<1.0",
   "jsonargparse[signatures]~=4.48",
   "lancedb[pylance]>=0.19,<1.0",

@@ -6,9 +6,9 @@ import shutil
 from functools import cached_property
 from typing import Any
 
-import datasets
 import lancedb
 import lancedb.table
+import pyarrow as pa
 import pydantic
 from loguru import logger
 from sqlalchemy import column, literal
@@ -76,55 +76,46 @@ class LanceIndex:
         return self.table
 
     def index_data(
-        self, dataset: datasets.Dataset, *, overwrite: bool = False
+        self, data: pa.Table, *, overwrite: bool = False
     ) -> lancedb.table.Table:
-        """Embed dataset and create table with scalar, FTS, and vector indices.
+        """Embed data and create table with scalar, FTS, and vector indices.
 
-        All columns from the dataset are indexed. The schema is inferred from
-        the dataset's PyArrow schema (supports nested list/struct types).
-        The ``id`` and ``text`` columns are required; a ``vector`` column is
-        computed automatically via the configured embedder.
+        All columns from the table are indexed. The ``id`` and ``text`` columns
+        are required; a ``vector`` column is computed automatically via the
+        configured embedder.
         """
         if self.table is not None and not overwrite:
             return self.table
 
-        import pyarrow as pa
         from lancedb.embeddings import EmbeddingFunctionConfig
 
-        arrow_data = dataset.data
-
         # Scalar index requires pa.string(), not large_string
-        id_idx = arrow_data.schema.get_field_index("id")
-        if arrow_data.schema.field("id").type != pa.string():
-            arrow_data = arrow_data.cast(
-                arrow_data.schema.set(id_idx, pa.field("id", pa.string()))
-            )
+        id_idx = data.schema.get_field_index("id")
+        if data.schema.field("id").type != pa.string():
+            data = data.cast(data.schema.set(id_idx, pa.field("id", pa.string())))
 
         db = lancedb.connect(self.config.lancedb_path)
+        embedding_function = EmbeddingFunctionConfig(
+            source_column="text",
+            vector_column="vector",
+            function=self.embedder,
+        )
         self.table = db.create_table(
             self.config.table_name,
-            data=arrow_data.to_batches(max_chunksize=1024),
-            embedding_functions=[
-                EmbeddingFunctionConfig(
-                    source_column="text",
-                    vector_column="vector",
-                    function=self.embedder,
-                )
-            ],
+            data=data.to_batches(max_chunksize=1024),
+            embedding_functions=[embedding_function],
             mode="overwrite",
         )
-
         self.table.create_scalar_index("id")
         self.table.create_fts_index("text")
 
-        num_partitions = 2 ** int(math.log2(len(dataset)) / 2)
+        num_partitions = 2 ** int(math.log2(max(1, data.num_rows)) / 2)
         self.table.create_index(
             vector_column_name="vector",
             metric="cosine",
             index_type="IVF_RQ",
             num_partitions=num_partitions,
         )
-
         self.table.optimize(
             cleanup_older_than=datetime.timedelta(days=0),
             delete_unverified=True,
@@ -136,12 +127,24 @@ class LanceIndex:
         )
         return self.table
 
+    def index_parquet(
+        self,
+        parquet_path: str,
+        *,
+        overwrite: bool = False,
+    ) -> lancedb.table.Table:
+        """Read a Parquet file (memory-mapped) and build the LanceDB index."""
+        import pyarrow.parquet as pq
+
+        data = pq.read_table(parquet_path, memory_map=True)
+        return self.index_data(data, overwrite=overwrite)
+
     def search(
         self,
         text: str,
         exclude_ids: list[str] | None = None,
         limit: int = 20,
-    ) -> datasets.Dataset:
+    ) -> pa.Table:
         """Hybrid vector + FTS search with reranking, returning scored results."""
         assert self.table is not None
 
@@ -156,20 +159,21 @@ class LanceIndex:
             filter_str = str(expr.compile(compile_kwargs={"literal_binds": True}))
             query = query.where(filter_str, prefilter=True)
 
-        return datasets.Dataset(query.to_arrow()).rename_column(
-            "_relevance_score", "score"
-        )  # type: ignore[arg-type]
+        result = query.to_arrow()
+        return result.rename_columns(
+            ["score" if n == "_relevance_score" else n for n in result.schema.names]
+        )
 
-    def get_ids(self, ids: list[str]) -> datasets.Dataset:
+    def get_ids(self, ids: list[str]) -> pa.Table:
         """Look up rows by ID list using the scalar index."""
         assert self.table is not None
 
         if not ids:
-            return datasets.Dataset(self.table.head(0))
+            return self.table.head(0)
 
         expr = column("id").in_([literal(v) for v in ids])
         filter_str = str(expr.compile(compile_kwargs={"literal_binds": True}))
-        return datasets.Dataset(self.table.search().where(filter_str).to_arrow())  # type: ignore[arg-type]
+        return self.table.search().where(filter_str).to_arrow()
 
 
 def main(
@@ -182,31 +186,33 @@ def main(
     """Build the LanceDB index from parquet and run a sample search."""
     import random
 
+    import pyarrow.parquet as pq
     import rich
 
     import agentic_rec.data
 
     agentic_rec.data.main(overwrite=False)
-    dataset = datasets.Dataset.from_parquet(parquet_path)
-    logger.info("dataset loaded: {}, shape: {}", parquet_path, dataset.shape)
 
     config = LanceIndexConfig(lancedb_path=lancedb_path, table_name=table_name)
     index = LanceIndex(config)
     if overwrite:
-        index.index_data(dataset, overwrite=overwrite)
+        index.index_parquet(parquet_path, overwrite=overwrite)
     else:
         try:
             index.open_table()
         except ValueError:
-            index.index_data(dataset)
+            index.index_parquet(parquet_path)
 
-    sample_id = random.choice(dataset["id"])
+    data = pq.read_table(parquet_path, memory_map=True)
+    logger.info("data loaded: {}, rows: {}", parquet_path, data.num_rows)
+
+    sample_id = random.choice(data["id"].to_pylist())
     item = index.get_ids([sample_id])
-    rich.print(item.select_columns(["id", "text"])[0])
+    rich.print(item.select(["id", "text"]).to_pylist()[0])
 
-    text = item["text"][0]
+    text = item.column("text")[0].as_py()
     results = index.search(text, exclude_ids=[sample_id], limit=5)
-    rich.print(results.select_columns(["id", "text", "score"]).to_list())
+    rich.print(results.drop(["vector"]).to_pylist())
 
 
 def cli() -> None:

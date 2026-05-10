@@ -10,6 +10,26 @@ from loguru import logger
 
 from agentic_rec.settings import settings
 
+
+def read_dat(
+    path: pathlib.Path,
+    dtype: dict[str, str],
+    encoding: str = "utf-8",
+) -> pl.DataFrame:
+    """Read a :: delimited .dat file as a Polars DataFrame."""
+    return pl.from_pandas(
+        pd.read_csv(
+            path,
+            sep="::",
+            header=None,
+            names=list(dtype.keys()),
+            dtype=dtype,
+            engine="python",
+            encoding=encoding,
+        )
+    )
+
+
 ###
 # download data
 ###
@@ -136,16 +156,7 @@ def load_items(src_dir: str = settings.data_dir) -> pl.LazyFrame:
     items_dat = pathlib.Path(src_dir, "ml-1m", "movies.dat")
     dtype = {"movie_id": "str", "title": "str", "genres": "str"}
     items = (
-        pd.read_csv(
-            items_dat,
-            sep="::",
-            header=None,
-            names=list(dtype.keys()),
-            dtype=dtype,
-            engine="python",
-            encoding="iso-8859-1",
-        )
-        .pipe(pl.from_pandas)
+        read_dat(items_dat, dtype, encoding="iso-8859-1")
         .rename({"movie_id": "id"})
         .with_columns(genres=pl.col("genres").str.split("|"))
         .with_columns(text=pl.struct("title", "genres").struct.json_encode())
@@ -176,17 +187,8 @@ def load_users(src_dir: str = settings.data_dir) -> pl.LazyFrame:
         "occupation": "int32",
         "zipcode": "str",
     }
-
     users = (
-        pd.read_csv(
-            users_dat,
-            sep="::",
-            header=None,
-            names=list(dtype.keys()),
-            dtype=dtype,
-            engine="python",
-        )
-        .pipe(pl.from_pandas)
+        read_dat(users_dat, dtype)
         .rename({"user_id": "id"})
         .with_columns(
             text=pl.struct(
@@ -221,15 +223,7 @@ def load_events(src_dir: str = settings.data_dir) -> pl.LazyFrame:
         "timestamp": "int32",
     }
     events = (
-        pd.read_csv(
-            events_dat,
-            sep="::",
-            header=None,
-            names=list(dtype.keys()),
-            dtype=dtype,
-            engine="python",
-        )
-        .pipe(pl.from_pandas)
+        read_dat(events_dat, dtype)
         .rename({"movie_id": "item_id", "rating": "event_value"})
         .with_columns(
             event_datetime=pl.from_epoch("timestamp"),

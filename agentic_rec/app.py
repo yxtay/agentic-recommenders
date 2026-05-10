@@ -112,9 +112,9 @@ async def recommend_item(
 async def get_user(user_id: str, *, users_index: UsersIndexDep) -> UserResponse:
     """Look up a user by ID."""
     result = users_index.get_ids([user_id])
-    if len(result) == 0:
+    if result.num_rows == 0:
         raise HTTPException(status_code=404, detail=f"User {user_id} not found")
-    return UserResponse.model_validate(result[0])
+    return UserResponse.model_validate(result.to_pylist()[0])
 
 
 @app.post("/users/{user_id}/recommend")
@@ -136,9 +136,9 @@ async def recommend_user_id(
 async def get_item(item_id: str, *, items_index: ItemsIndexDep) -> ItemResponse:
     """Look up an item by ID."""
     result = items_index.get_ids([item_id])
-    if len(result) == 0:
+    if result.num_rows == 0:
         raise HTTPException(status_code=404, detail=f"Item {item_id} not found")
-    return ItemResponse.model_validate(result[0])
+    return ItemResponse.model_validate(result.to_pylist()[0])
 
 
 @app.post("/items/{item_id}/recommend")

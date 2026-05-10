@@ -96,9 +96,9 @@ def get_item_texts(
     before generating search queries.
     """
     logger.info("get_item_texts: {} ids", len(item_ids))
-    dataset = ctx.deps.index.get_ids(item_ids)
-    logger.info("get_item_texts: {} results", len(dataset))
-    return {row["id"]: row["text"] for row in dataset}
+    result = ctx.deps.index.get_ids(item_ids)
+    logger.info("get_item_texts: {} results", result.num_rows)
+    return {row["id"]: row["text"] for row in result.to_pylist()}
 
 
 _item_candidate_adapter = pydantic.TypeAdapter(list[ItemCandidate])
@@ -116,9 +116,9 @@ def search_items(
     Call multiple times with diverse queries to maximize coverage.
     Pass exclude_ids to avoid recommending items the user has already seen.
     """
-    dataset = ctx.deps.index.search(query, exclude_ids=exclude_ids, limit=limit)
-    logger.info("search_items: {} results", len(dataset))
-    return _item_candidate_adapter.validate_python(dataset.to_list())
+    result = ctx.deps.index.search(query, exclude_ids=exclude_ids, limit=limit)
+    logger.info("search_items: {} results", result.num_rows)
+    return _item_candidate_adapter.validate_python(result.to_pylist())
 
 
 async def check_llm() -> bool:
@@ -141,7 +141,7 @@ def main(limit: int = 5) -> None:
     import asyncio
     import random
 
-    import datasets
+    import pyarrow.parquet as pq
     import rich
 
     import agentic_rec.index
@@ -151,9 +151,9 @@ def main(limit: int = 5) -> None:
     index = LanceIndex(LanceIndexConfig())
     index.open_table()
 
-    users_dataset = datasets.Dataset.from_parquet(settings.users_parquet)
-    sample_idx = random.randrange(len(users_dataset))
-    sample_user = users_dataset[sample_idx]
+    users_table = pq.read_table(settings.users_parquet, memory_map=True)
+    sample_idx = random.randrange(users_table.num_rows)
+    sample_user = users_table.slice(sample_idx, 1).to_pylist()[0]
     request = RecommendRequest.model_validate({**sample_user, "limit": limit})
     request.history = request.history[-20:]
     rich.print(request)

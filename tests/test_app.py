@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
-import datasets
+import pyarrow as pa
 import pytest
 from fastapi.testclient import TestClient
 
@@ -17,7 +17,7 @@ from agentic_rec.models import ItemRecommended, RecommendResponse
 @pytest.fixture
 def mock_index() -> MagicMock:
     index = MagicMock()
-    index.get_ids.return_value = datasets.Dataset.from_dict(
+    index.get_ids.return_value = pa.table(
         {"id": ["42"], "text": ["The Matrix (1999) | Action, Sci-Fi"]}
     )
     return index
@@ -27,7 +27,7 @@ def mock_index() -> MagicMock:
 def mock_users_index() -> MagicMock:
     users_index = MagicMock()
     users_index.table.count_rows.return_value = 1
-    users_index.get_ids.return_value = datasets.Dataset.from_dict(
+    users_index.get_ids.return_value = pa.table(
         {
             "id": ["1"],
             "text": ["25-year-old male, software engineer"],
@@ -87,7 +87,7 @@ class TestGetUser:
         assert "history" in data
 
     def test_not_found(self, client: TestClient, mock_users_index: MagicMock) -> None:
-        mock_users_index.get_ids.return_value = datasets.Dataset.from_dict(
+        mock_users_index.get_ids.return_value = pa.table(
             {"id": [], "text": [], "history": []}
         )
         resp = client.get("/users/999")
@@ -104,9 +104,7 @@ class TestGetItem:
         mock_index.get_ids.assert_called_once_with(["42"])
 
     def test_not_found(self, client: TestClient, mock_index: MagicMock) -> None:
-        mock_index.get_ids.return_value = datasets.Dataset.from_dict(
-            {"id": [], "text": []}
-        )
+        mock_index.get_ids.return_value = pa.table({"id": [], "text": []})
         resp = client.get("/items/999")
         assert resp.status_code == 404
 
@@ -143,7 +141,7 @@ class TestRecommendUser:
     def test_user_not_found(
         self, client: TestClient, mock_users_index: MagicMock
     ) -> None:
-        mock_users_index.get_ids.return_value = datasets.Dataset.from_dict(
+        mock_users_index.get_ids.return_value = pa.table(
             {"id": [], "text": [], "history": []}
         )
         resp = client.post("/users/999/recommend")
@@ -163,8 +161,6 @@ class TestRecommendItem:
         assert "items" in data
 
     def test_item_not_found(self, client: TestClient, mock_index: MagicMock) -> None:
-        mock_index.get_ids.return_value = datasets.Dataset.from_dict(
-            {"id": [], "text": []}
-        )
+        mock_index.get_ids.return_value = pa.table({"id": [], "text": []})
         resp = client.post("/items/999/recommend")
         assert resp.status_code == 404

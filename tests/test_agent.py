@@ -3,7 +3,7 @@ from __future__ import annotations
 import datetime
 from unittest.mock import MagicMock
 
-import datasets
+import pyarrow as pa
 import pytest
 
 from agentic_rec.agent import AgentDeps, agent
@@ -17,10 +17,10 @@ from agentic_rec.models import (
 @pytest.fixture
 def mock_index() -> MagicMock:
     index = MagicMock()
-    index.get_ids.return_value = datasets.Dataset.from_dict(
+    index.get_ids.return_value = pa.table(
         {"id": ["1", "2"], "text": ["Movie A (1999)", "Movie B (2000)"]}
     )
-    index.search.return_value = datasets.Dataset.from_dict(
+    index.search.return_value = pa.table(
         {
             "id": ["3", "4"],
             "text": ["Action Movie (2001)", "Drama Film (2002)"],

@@ -35,12 +35,16 @@ class RecommendResponse(pydantic.BaseModel):
 
 
 class UserResponse(pydantic.BaseModel):
+    model_config = pydantic.ConfigDict(extra="allow")
+
     id: str
     text: str
     history: list[Interaction] = []
 
 
 class ItemResponse(pydantic.BaseModel):
+    model_config = pydantic.ConfigDict(extra="allow")
+
     id: str
     text: str
 

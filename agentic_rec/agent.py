@@ -98,13 +98,7 @@ def get_item_texts(
     logger.info("get_item_texts: {} ids", len(item_ids))
     result = ctx.deps.index.get_ids(item_ids)
     logger.info("get_item_texts: {} results", result.num_rows)
-    return dict(
-        zip(
-            result.column("id").to_pylist(),
-            result.column("text").to_pylist(),
-            strict=True,
-        )
-    )
+    return {row["id"]: row["text"] for row in result.to_pylist()}
 
 
 _item_candidate_adapter = pydantic.TypeAdapter(list[ItemCandidate])

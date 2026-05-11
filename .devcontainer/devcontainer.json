@@ -7,8 +7,8 @@
   },
   "customizations": {
     "vscode": {
-      "extensions": ["charliermarsh.ruff", "ms-python.python"]
+      "extensions": ["astral-sh.ruff", "ms-python.python"]
     }
   },
-  "postCreateCommand": "uv sync && npm install -g @google/gemini-cli"
+  "updateContentCommand": "npm install -g @google/gemini-cli"
 }

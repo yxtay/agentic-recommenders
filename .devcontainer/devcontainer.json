@@ -10,5 +10,6 @@
       "extensions": ["astral-sh.ruff", "ms-python.python"]
     }
   },
+  "mounts": ["source=gemini-config,target=/home/vscode/.gemini,type=volume"],
   "updateContentCommand": "npm install -g @google/gemini-cli"
 }

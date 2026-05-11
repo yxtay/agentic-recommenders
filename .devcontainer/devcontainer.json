@@ -9,10 +9,7 @@
   },
   "customizations": {
     "vscode": {
-      "extensions": [
-        "charliermarsh.ruff",
-        "ms-python.python"
-      ],
+      "extensions": ["charliermarsh.ruff", "ms-python.python"],
       "settings": {
         "python.defaultInterpreterPath": ".venv/bin/python"
       }

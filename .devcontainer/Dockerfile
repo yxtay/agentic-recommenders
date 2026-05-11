@@ -3,11 +3,7 @@ FROM ghcr.io/astral-sh/uv:0.11.12@sha256:3a59a3cdd5f7c217faa36e32dbc7fddbb041288
 
 FROM mcr.microsoft.com/devcontainers/base:debian@sha256:e389149057371298eaeb72e736fc2c4dcb79974de222dd471d2e6d675d2f61c4
 
-ENV UV_LOCKED=1
-
 COPY --from=uv /uv /uvx /bin/
-COPY .python-version ./
-RUN uv python install
 
 USER vscode
 HEALTHCHECK NONE

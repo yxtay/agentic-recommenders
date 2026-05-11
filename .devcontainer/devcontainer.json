@@ -1,0 +1,14 @@
+{
+  "name": "Agentic Recommenders",
+  "image": "mcr.microsoft.com/devcontainers/base:debian",
+  "features": {
+    "ghcr.io/devcontainers/features/node:1": {},
+    "ghcr.io/devcontainers-extra/features/uv:1": {}
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": ["astral-sh.ruff", "ms-python.python"]
+    }
+  },
+  "updateContentCommand": "npm install -g @google/gemini-cli"
+}

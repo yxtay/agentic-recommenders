@@ -2,9 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from agentic_rec.models import ItemResponse
-
 if TYPE_CHECKING:
+    from agentic_rec.models import ItemResponse
     from agentic_rec.repositories.item_repository import ItemRepository
 
 

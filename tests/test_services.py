@@ -4,18 +4,26 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from agentic_rec.models import RecommendRequest, RecommendResponse, ItemRecommended, UserResponse, ItemResponse
+from agentic_rec.models import (
+    ItemRecommended,
+    ItemResponse,
+    RecommendRequest,
+    RecommendResponse,
+    UserResponse,
+)
+from agentic_rec.services.item_service import ItemService
 from agentic_rec.services.recommendation_service import RecommendationService
 from agentic_rec.services.user_service import UserService
-from agentic_rec.services.item_service import ItemService
 
 
 @pytest.mark.asyncio
-async def test_recommendation_service_recommend():
+async def test_recommendation_service_recommend() -> None:
     mock_item_repo = MagicMock()
     mock_user_repo = MagicMock()
 
-    expected_response = RecommendResponse(items=[ItemRecommended(id="1", text="Movie", explanation="desc")])
+    expected_response = RecommendResponse(
+        items=[ItemRecommended(id="1", text="Movie", explanation="desc")]
+    )
 
     service = RecommendationService(mock_item_repo, mock_user_repo)
     # Patch the agent on the service instance
@@ -29,7 +37,7 @@ async def test_recommendation_service_recommend():
     service.rec_agent.run.assert_called_once()
 
 
-def test_user_service_get_user():
+def test_user_service_get_user() -> None:
     mock_repo = MagicMock()
     expected_user = UserResponse(id="1", text="User 1")
     mock_repo.get_by_id.return_value = expected_user
@@ -40,7 +48,7 @@ def test_user_service_get_user():
     mock_repo.get_by_id.assert_called_once_with("1")
 
 
-def test_item_service_get_item():
+def test_item_service_get_item() -> None:
     mock_repo = MagicMock()
     expected_item = ItemResponse(id="1", text="Item 1")
     mock_repo.get_by_id.return_value = expected_item

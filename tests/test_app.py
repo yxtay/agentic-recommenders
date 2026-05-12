@@ -62,29 +62,39 @@ def mock_agent_response() -> RecommendResponse:
 
 @pytest.fixture
 def client(
-    mock_index: MagicMock, mock_users_index: MagicMock, mock_agent_response: RecommendResponse
+    mock_index: MagicMock,
+    mock_users_index: MagicMock,
+    mock_agent_response: RecommendResponse,
 ) -> Iterator[TestClient]:
+    from agentic_rec.dependencies import get_recommendation_service
     from agentic_rec.repositories.item_repository import ItemRepository
     from agentic_rec.repositories.user_repository import UserRepository
     from agentic_rec.services.recommendation_service import RecommendationService
-    from agentic_rec.dependencies import get_recommendation_service
 
     item_repo = MagicMock(spec=ItemRepository)
-    item_repo.table = mock_index.table # For health check count_rows
+    item_repo.table = mock_index.table  # For health check count_rows
+
     def get_item_by_id(item_id):
         res = mock_index.get_ids([item_id])
-        if res.num_rows == 0: return None
+        if res.num_rows == 0:
+            return None
         from agentic_rec.models import ItemResponse
+
         return ItemResponse.model_validate(res.to_pylist()[0])
+
     item_repo.get_by_id.side_effect = get_item_by_id
 
     user_repo = MagicMock(spec=UserRepository)
     user_repo.table = mock_users_index.table
+
     def get_user_by_id(user_id):
         res = mock_users_index.get_ids([user_id])
-        if res.num_rows == 0: return None
+        if res.num_rows == 0:
+            return None
         from agentic_rec.models import UserResponse
+
         return UserResponse.model_validate(res.to_pylist()[0])
+
     user_repo.get_by_id.side_effect = get_user_by_id
 
     rec_service = MagicMock(spec=RecommendationService)
@@ -168,6 +178,7 @@ class TestRecommendUser:
         # and if it returns None, raises 404.
         # So we need to mock rec_service to return None.
         from agentic_rec.dependencies import get_recommendation_service
+
         rec_service = app.dependency_overrides[get_recommendation_service]()
         rec_service.recommend_for_user.return_value = None
 
@@ -184,6 +195,7 @@ class TestRecommendItem:
 
     def test_item_not_found(self, client: TestClient, mock_index: MagicMock) -> None:
         from agentic_rec.dependencies import get_recommendation_service
+
         rec_service = app.dependency_overrides[get_recommendation_service]()
         rec_service.recommend_for_item.return_value = None
 

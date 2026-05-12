@@ -236,18 +236,18 @@ response = await agent.run(instructions=ITEM_INSTRUCTIONS, deps=AgentDeps(index,
 
 This implementation follows a 3-tier architecture to separate concerns and improve testability:
 
-1.  **Repository Layer (`agentic_rec/repositories/`)**:
+1. **Repository Layer (`agentic_rec/repositories/`)**:
     Wraps `LanceIndex` to provide specialized data access for items and users.
     - `ItemRepository`: search and point lookups for items.
     - `UserRepository`: point lookups for users.
 
-2.  **Service Layer (`agentic_rec/services/`)**:
+2. **Service Layer (`agentic_rec/services/`)**:
     Contains business logic and orchestrates the agent and repositories.
     - `RecommendationService`: handles recommendation workflows (user-based, item-based, by ID).
     - `UserService`: basic user management.
     - `ItemService`: basic item management.
 
-3.  **API Layer (`agentic_rec/routers/`)**:
+3. **API Layer (`agentic_rec/routers/`)**:
     FastAPI routers that handle HTTP requests and delegate to services.
     - `recommendations.py`: all recommendation endpoints.
     - `users.py`: user lookup endpoints.

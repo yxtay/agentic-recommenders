@@ -2,9 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from agentic_rec.models import UserResponse
-
 if TYPE_CHECKING:
+    from agentic_rec.models import UserResponse
     from agentic_rec.repositories.user_repository import UserRepository
 
 

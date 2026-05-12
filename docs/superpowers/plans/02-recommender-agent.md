@@ -79,9 +79,9 @@ item ID to text. The agent calls this to understand what items the user interact
 
 ### 8. Implement `search_items` tool
 
-Delegates to `ctx.deps.index.search(query, exclude_ids, limit)`. Returns
+Delegates to `ctx.deps.index.search(query, query_type, exclude_ids, limit)`. Returns
 `list[ItemCandidate]` via a `TypeAdapter` for validation. The agent calls this 2-4 times
-with varied queries for diversity.
+with varied queries and search methods for diversity.
 
 ### 9. Add `check_llm()` helper
 

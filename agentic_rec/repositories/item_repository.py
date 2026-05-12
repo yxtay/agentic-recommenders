@@ -35,7 +35,7 @@ class ItemRepository:
     def search(
         self,
         query: str,
-        query_type: Literal[hybrid, vector, fts] = "hybrid",
+        query_type: str = "hybrid",
         exclude_ids: list[str] | None = None,
         limit: int = 20,
     ) -> pa.Table:

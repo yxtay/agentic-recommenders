@@ -58,8 +58,8 @@ Request (text, history: [{item_id, event_datetime, event_name, event_value}], li
     │           event_value), and retrieved item texts, produces a
     │           natural-language preference summary.
     │
-    ├─ [Tool 2] search_items(query, exclude_ids, limit)    ← called 2-4 times
-    │           Hybrid search (vector + FTS) on LanceDB items table.
+    ├─ [Tool 2] search_items(query, query_type, exclude_ids, limit)    ← called 2-4 times
+    │           Vector, FTS, or Hybrid search on LanceDB items table.
     │           Interacted item_ids always excluded.
     │           Agent issues multiple queries for diversity:
     │             • item_text of a recent highly-rated interaction
@@ -159,9 +159,9 @@ The `vector` column is computed automatically via the configured embedder. Steps
 4. Create `IVF_RQ` vector index with heuristic partitioning (`2^(log2(n)/2)`).
 5. Optimize table (cleanup, delete unverified).
 
-**`search(text, exclude_ids=None, limit=20) → datasets.Dataset`**
+**`search(text, query_type="hybrid", exclude_ids=None, limit=20) → pa.Table`**
 
-Hybrid (vector + FTS) search with answerdotai reranking. Filter built via sqlalchemy
+Vector, FTS, or Hybrid search with answerdotai reranking. Filter built via sqlalchemy
 (`column("id").not_in(...)` compiled with `literal_binds=True`) for SQL injection safety.
 Returns dataset with columns: `id`, `text`, `vector`, `score`.
 
@@ -212,7 +212,7 @@ Two instruction sets for different recommendation modes:
 | Tool             | Delegates to      | Purpose                                   |
 |------------------|-------------------|-------------------------------------------|
 | `get_item_texts` | `index.get_ids()` | Fetch text of interacted items by ID list |
-| `search_items`   | `index.search()`  | Hybrid search with exclude filter         |
+| `search_items`   | `index.search()`  | Vector, FTS, or Hybrid search with exclude filter |
 
 ### Cold-start handling
 

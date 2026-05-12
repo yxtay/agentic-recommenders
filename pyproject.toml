@@ -35,6 +35,8 @@ dev = [
 
 [project.scripts]
 data = "agentic_rec.data:cli"
+index = "agentic_rec.index:cli"
+agent = "agentic_rec.agent:cli"
 app = "agentic_rec.main:cli"
 
 [tool.fastapi]

@@ -14,17 +14,19 @@ from agentic_rec.services.item_service import ItemService
 async def test_recommendation_service_recommend():
     mock_item_repo = MagicMock()
     mock_user_repo = MagicMock()
-    mock_agent = MagicMock()
 
     expected_response = RecommendResponse(items=[ItemRecommended(id="1", text="Movie", explanation="desc")])
-    mock_agent.run = AsyncMock(return_value=MagicMock(output=expected_response))
 
-    service = RecommendationService(mock_item_repo, mock_user_repo, mock_agent)
+    service = RecommendationService(mock_item_repo, mock_user_repo)
+    # Patch the agent on the service instance
+    service.rec_agent = MagicMock()
+    service.rec_agent.run = AsyncMock(return_value=MagicMock(output=expected_response))
+
     request = RecommendRequest(text="test", limit=5)
 
     response = await service.recommend(request)
     assert response == expected_response
-    mock_agent.run.assert_called_once()
+    service.rec_agent.run.assert_called_once()
 
 
 def test_user_service_get_user():

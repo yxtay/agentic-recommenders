@@ -2,13 +2,9 @@
   "name": "Agentic Recommenders",
   "image": "mcr.microsoft.com/devcontainers/base:debian",
   "features": {
-    "ghcr.io/devcontainers/features/node:2": {},
-    "ghcr.io/devcontainers-extra/features/uv:1": {}
+    "ghcr.io/devcontainers/features/github-cli:1": {},
+    "ghcr.io/devcontainers/features/node:2": {}
   },
-  "customizations": {
-    "vscode": {
-      "extensions": ["astral-sh.ruff", "ms-python.python"]
-    }
-  },
-  "updateContentCommand": "npm install -g @google/gemini-cli"
+  "mounts": ["source=gemini-config,target=/home/vscode/.gemini,type=volume"],
+  "onCreateCommand": "sudo chown -R vscode:vscode /home/vscode/.gemini"
 }

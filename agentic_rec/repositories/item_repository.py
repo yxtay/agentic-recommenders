@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING
 
 from agentic_rec.models import ItemResponse
 
@@ -35,7 +35,7 @@ class ItemRepository:
     def search(
         self,
         query: str,
-        query_type: Literal["hybrid", "vector", "fts"] = "hybrid",
+        query_type: str = "hybrid",
         exclude_ids: list[str] | None = None,
         limit: int = 20,
     ) -> pa.Table:

@@ -46,7 +46,7 @@ uv run ruff format .
 uv run pytest
 
 # run a single test
-uv run pytest tests/test_index.py::TestSearch::test_returns_dataset -v
+uv run pytest tests/test_index.py::TestSearch::test_returns_table -v
 ```
 
 ## Architecture

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING
 
 import pydantic
 import pydantic_ai
@@ -110,7 +110,7 @@ _item_candidate_adapter = pydantic.TypeAdapter(list[ItemCandidate])
 def search_items(
     ctx: RunContext[AgentDeps],
     query: str,
-    query_type: Literal["hybrid", "vector", "fts"] = "hybrid",
+    query_type: str = "hybrid",
     exclude_ids: list[str] | None = None,
     limit: int = 20,
 ) -> list[ItemCandidate]:

@@ -81,7 +81,7 @@ Supported model strings: `cerebras:llama3.1-8b`, `anthropic:claude-haiku-4-5`, `
 ### 4. Serve
 
 ```bash
-uv run fastapi run agentic_rec.app:app
+uv run fastapi run agentic_rec.main:app
 ```
 
 Request example:
@@ -101,14 +101,18 @@ curl -X POST http://localhost:3000/recommend \
 
 ## Modules
 
-| File                      | Responsibility                                                      |
-|---------------------------|---------------------------------------------------------------------|
-| `agentic_rec/settings.py` | pydantic-settings `Settings` class: paths, model names, table names |
-| `agentic_rec/data.py`     | MovieLens download, Parquet conversion, train/val/test split        |
-| `agentic_rec/index.py`    | LanceDB index: embedding, hybrid search, reranking (items & users)  |
-| `agentic_rec/models.py`   | Pydantic models: request/response types                             |
-| `agentic_rec/agent.py`    | pydantic-ai `Agent` singleton with tools                            |
-| `agentic_rec/app.py`      | FastAPI service                                                     |
+| File                            | Responsibility                                                      |
+|---------------------------------|---------------------------------------------------------------------|
+| `agentic_rec/settings.py`       | pydantic-settings `Settings` class: paths, model names, table names |
+| `agentic_rec/data.py`           | MovieLens download, Parquet conversion, train/val/test split        |
+| `agentic_rec/index.py`          | LanceDB index: embedding, hybrid search, reranking (items & users)  |
+| `agentic_rec/models.py`         | Pydantic models: request/response types                             |
+| `agentic_rec/agent.py`          | pydantic-ai `Agent` singleton with tools                            |
+| `agentic_rec/main.py`           | FastAPI service entry point                                         |
+| `agentic_rec/repositories/`     | Repository layer (data access)                                      |
+| `agentic_rec/services/`         | Service layer (business logic)                                      |
+| `agentic_rec/routers/`          | API layer (routers)                                                 |
+| `agentic_rec/dependencies.py`   | Dependency injection                                                |
 
 ## API Routes
 

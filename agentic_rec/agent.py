@@ -110,7 +110,7 @@ _item_candidate_adapter = pydantic.TypeAdapter(list[ItemCandidate])
 def search_items(
     ctx: RunContext[AgentDeps],
     query: str,
-    query_type: Literal["hybrid", "vector", "fts"] = "hybrid",
+    query_type: Literal[hybrid, vector, fts] = "hybrid",
     exclude_ids: list[str] | None = None,
     limit: int = 20,
 ) -> list[ItemCandidate]:

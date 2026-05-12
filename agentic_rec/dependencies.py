@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Annotated
 
-import pydantic_ai
 from fastapi import Depends, Request
 
 from agentic_rec.repositories.item_repository import ItemRepository
@@ -12,6 +11,8 @@ from agentic_rec.services.recommendation_service import RecommendationService
 from agentic_rec.services.user_service import UserService
 
 if TYPE_CHECKING:
+    import pydantic_ai
+
     from agentic_rec.agent import AgentDeps
     from agentic_rec.models import RecommendResponse
 

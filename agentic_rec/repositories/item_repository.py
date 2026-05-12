@@ -6,6 +6,7 @@ from agentic_rec.models import ItemResponse
 
 if TYPE_CHECKING:
     import pyarrow as pa
+
     from agentic_rec.index import LanceIndex
 
 

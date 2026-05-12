@@ -10,7 +10,11 @@ import pyarrow as pa
 import pytest
 from fastapi.testclient import TestClient
 
-from agentic_rec.dependencies import get_rec_agent, get_item_repository, get_user_repository
+from agentic_rec.dependencies import (
+    get_item_repository,
+    get_rec_agent,
+    get_user_repository,
+)
 from agentic_rec.main import app
 from agentic_rec.models import ItemRecommended, RecommendResponse
 
@@ -71,27 +75,44 @@ def mock_agent(mock_agent_response: RecommendResponse) -> MagicMock:
 def client(
     mock_index: MagicMock, mock_users_index: MagicMock, mock_agent: MagicMock
 ) -> Iterator[TestClient]:
-    app.dependency_overrides[get_item_repository] = lambda: MagicMock(index=mock_index, get_by_id=MagicMock(side_effect=lambda id: mock_index.get_ids([id]).to_pylist()[0] if mock_index.get_ids([id]).num_rows > 0 else None))
+    app.dependency_overrides[get_item_repository] = lambda: MagicMock(
+        index=mock_index,
+        get_by_id=MagicMock(
+            side_effect=lambda id: (
+                mock_index.get_ids([id]).to_pylist()[0]
+                if mock_index.get_ids([id]).num_rows > 0
+                else None
+            )
+        ),
+    )
     # Actually it's easier to mock the repositories themselves if we want to test the API layer
     from agentic_rec.repositories.item_repository import ItemRepository
     from agentic_rec.repositories.user_repository import UserRepository
 
     item_repo = MagicMock(spec=ItemRepository)
     item_repo.index = mock_index
+
     def get_item_by_id(item_id):
         res = mock_index.get_ids([item_id])
-        if res.num_rows == 0: return None
+        if res.num_rows == 0:
+            return None
         from agentic_rec.models import ItemResponse
+
         return ItemResponse.model_validate(res.to_pylist()[0])
+
     item_repo.get_by_id.side_effect = get_item_by_id
 
     user_repo = MagicMock(spec=UserRepository)
     user_repo.index = mock_users_index
+
     def get_user_by_id(user_id):
         res = mock_users_index.get_ids([user_id])
-        if res.num_rows == 0: return None
+        if res.num_rows == 0:
+            return None
         from agentic_rec.models import UserResponse
+
         return UserResponse.model_validate(res.to_pylist()[0])
+
     user_repo.get_by_id.side_effect = get_user_by_id
 
     app.dependency_overrides[get_item_repository] = lambda: item_repo

@@ -9,6 +9,7 @@ from agentic_rec.models import RecommendRequest, RecommendResponse
 
 if TYPE_CHECKING:
     import pydantic_ai
+
     from agentic_rec.repositories.item_repository import ItemRepository
     from agentic_rec.repositories.user_repository import UserRepository
 

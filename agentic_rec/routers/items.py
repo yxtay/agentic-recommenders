@@ -9,7 +9,7 @@ router = APIRouter()
 
 
 @router.get("/{item_id}")
-async def get_item(item_id: str, item_service: ItemServiceDep) -> ItemResponse:
+def get_item(item_id: str, item_service: ItemServiceDep) -> ItemResponse:
     """Look up an item by ID."""
     item = item_service.get_item(item_id)
     if not item:

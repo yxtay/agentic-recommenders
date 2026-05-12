@@ -252,14 +252,13 @@ This implementation follows a 3-tier architecture to separate concerns and impro
     - `recommendations.py`: all recommendation endpoints.
     - `users.py`: user lookup endpoints.
     - `items.py`: item lookup endpoints.
-    - `health.py`, `info.py`: system metadata.
+    - `health.py`: system health and metadata.
 
 ### Routes
 
 | Route                        | Method | Description                                           |
 |------------------------------|--------|-------------------------------------------------------|
-| `/healthz`                   | GET    | Service health (index, users, LLM readiness)          |
-| `/info`                      | GET    | Model configuration (embedder, reranker, LLM)         |
+| `/healthz`                   | GET    | Service health and model configuration                |
 | `/recommend`                 | POST   | User-based recommendations (alias: `/recommend/user`) |
 | `/recommend/item`            | POST   | Item-based similar-item recommendations               |
 | `/users/{user_id}`           | GET    | Look up user by ID (text + history)                   |

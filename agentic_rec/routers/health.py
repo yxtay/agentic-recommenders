@@ -14,7 +14,7 @@ router = APIRouter()
 
 
 @router.get("/healthz")
-async def healthz(
+def healthz(
     request: Request,
     items_repo: Annotated[ItemRepository, Depends(get_item_repository)],
     users_repo: Annotated[UserRepository, Depends(get_user_repository)],

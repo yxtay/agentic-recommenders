@@ -19,6 +19,8 @@ class UserRepository:
 
     def get_by_id(self, user_id: str) -> UserResponse | None:
         """Look up a user by ID."""
+        if self.index.table is None:
+            return None
         result = self.index.get_ids([user_id])
         if result.num_rows == 0:
             return None

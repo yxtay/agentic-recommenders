@@ -118,8 +118,7 @@ curl -X POST http://localhost:3000/recommend \
 
 | Route                        | Method | Description                                           |
 |------------------------------|--------|-------------------------------------------------------|
-| `/healthz`                   | GET    | Service health (index, users, LLM readiness)          |
-| `/info`                      | GET    | Model configuration (embedder, reranker, LLM)         |
+| `/healthz`                   | GET    | Service health and model configuration                |
 | `/recommend`                 | POST   | User-based recommendations (alias: `/recommend/user`) |
 | `/recommend/item`            | POST   | Item-based similar-item recommendations               |
 | `/users/{user_id}`           | GET    | Look up user by ID (text + history)                   |

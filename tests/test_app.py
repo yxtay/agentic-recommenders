@@ -105,6 +105,7 @@ def client(
     app.dependency_overrides[get_item_repository] = lambda: item_repo
     app.dependency_overrides[get_user_repository] = lambda: user_repo
     app.dependency_overrides[get_recommendation_service] = lambda: rec_service
+    app.state.llm_ready = True
 
     yield TestClient(app)
     app.dependency_overrides.clear()

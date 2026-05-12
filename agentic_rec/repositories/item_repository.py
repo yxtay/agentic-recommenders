@@ -21,6 +21,8 @@ class ItemRepository:
 
     def get_by_id(self, item_id: str) -> ItemResponse | None:
         """Look up an item by ID."""
+        if self.index.table is None:
+            return None
         result = self.index.get_ids([item_id])
         if result.num_rows == 0:
             return None

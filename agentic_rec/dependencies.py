@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Annotated
+from typing import Annotated
 
 from fastapi import Depends, Request
 
@@ -10,25 +10,13 @@ from agentic_rec.services.item_service import ItemService
 from agentic_rec.services.recommendation_service import RecommendationService
 from agentic_rec.services.user_service import UserService
 
-if TYPE_CHECKING:
-    import pydantic_ai
-
-    from agentic_rec.agent import AgentDeps
-    from agentic_rec.models import RecommendResponse
-
 
 def get_item_repository(request: Request) -> ItemRepository:
-    return ItemRepository(request.app.state.items_index)
+    return request.app.state.items_index
 
 
 def get_user_repository(request: Request) -> UserRepository:
-    return UserRepository(request.app.state.users_index)
-
-
-def get_rec_agent() -> pydantic_ai.Agent[AgentDeps, RecommendResponse]:
-    from agentic_rec.agent import agent
-
-    return agent
+    return request.app.state.users_index
 
 
 def get_item_service(
@@ -46,10 +34,24 @@ def get_user_service(
 def get_recommendation_service(
     item_repo: ItemRepository = Depends(get_item_repository),
     user_repo: UserRepository = Depends(get_user_repository),
-    rec_agent: pydantic_ai.Agent[AgentDeps, RecommendResponse] = Depends(get_rec_agent),
 ) -> RecommendationService:
-    return RecommendationService(item_repo, user_repo, rec_agent)
+    # We use a singleton for the recommendation service in app.state
+    if not hasattr(request.app.state, "recommendation_service"):
+         request.app.state.recommendation_service = RecommendationService(item_repo, user_repo)
+    return request.app.state.recommendation_service
 
+
+# Wait, get_recommendation_service doesn't have access to request if it's not a parameter.
+# Let's fix that.
+
+def get_recommendation_service(
+    request: Request,
+    item_repo: ItemRepository = Depends(get_item_repository),
+    user_repo: UserRepository = Depends(get_user_repository),
+) -> RecommendationService:
+    if not hasattr(request.app.state, "recommendation_service"):
+         request.app.state.recommendation_service = RecommendationService(item_repo, user_repo)
+    return request.app.state.recommendation_service
 
 ItemServiceDep = Annotated[ItemService, Depends(get_item_service)]
 UserServiceDep = Annotated[UserService, Depends(get_user_service)]

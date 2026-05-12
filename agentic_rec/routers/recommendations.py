@@ -1,13 +1,10 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 from fastapi import APIRouter, HTTPException
 from loguru import logger
 
-if TYPE_CHECKING:
-    from agentic_rec.dependencies import RecServiceDep
-    from agentic_rec.models import RecommendRequest, RecommendResponse
+from agentic_rec.dependencies import RecServiceDep
+from agentic_rec.models import RecommendRequest, RecommendResponse
 
 router = APIRouter()
 

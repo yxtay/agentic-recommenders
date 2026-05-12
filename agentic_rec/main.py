@@ -73,7 +73,7 @@ def main(limit: int = 5) -> None:
         rich.print(resp.json())
 
         logger.info(f"POST /users/{user_id}/recommend?limit={limit}")
-        resp = client.post(f"/users/{user_id}/recommend?limit={limit}")
+        resp = client.post(f"/users/{user_id}/recommend", params={"limit": limit})
         resp.raise_for_status()
         rich.print(resp.json())
 

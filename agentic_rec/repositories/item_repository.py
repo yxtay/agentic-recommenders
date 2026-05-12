@@ -3,14 +3,26 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from agentic_rec.models import ItemResponse
-from agentic_rec.repositories.base import BaseRepository
 
 if TYPE_CHECKING:
     import pyarrow as pa
+    from agentic_rec.index import LanceIndex
 
 
-class ItemRepository(BaseRepository[ItemResponse]):
-    model_class = ItemResponse
+class ItemRepository:
+    def __init__(self, index: LanceIndex) -> None:
+        self.index = index
+
+    def get_by_id(self, item_id: str) -> ItemResponse | None:
+        """Look up an item by ID."""
+        result = self.index.get_ids([item_id])
+        if result.num_rows == 0:
+            return None
+        return ItemResponse.model_validate(result.to_pylist()[0])
+
+    def get_by_ids(self, item_ids: list[str]) -> pa.Table:
+        """Look up multiple items by ID list."""
+        return self.index.get_ids(item_ids)
 
     def search(
         self,

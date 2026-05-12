@@ -78,7 +78,12 @@ class LanceIndex:
     def index_data(
         self, data: pa.Table, *, overwrite: bool = False
     ) -> lancedb.table.Table:
-        """Embed data and create table with scalar, FTS, and vector indices."""
+        """Embed data and create table with scalar, FTS, and vector indices.
+
+        All columns from the table are indexed. The ``id`` and ``text`` columns
+        are required; a ``vector`` column is computed automatically via the
+        configured embedder.
+        """
         if self.table is not None and not overwrite:
             return self.table
 

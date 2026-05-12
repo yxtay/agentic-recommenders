@@ -8,7 +8,7 @@ from loguru import logger
 
 from agentic_rec.agent import check_llm
 from agentic_rec.index import LanceIndex, LanceIndexConfig
-from agentic_rec.routers import health, info, items, recommendations, users
+from agentic_rec.routers import health, items, recommendations, users
 from agentic_rec.settings import settings
 
 if TYPE_CHECKING:
@@ -35,7 +35,6 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 app = FastAPI(title="Agentic Recommender", lifespan=lifespan)
 
 app.include_router(health.router, tags=["health"])
-app.include_router(info.router, tags=["info"])
 app.include_router(recommendations.router, tags=["recommendations"])
 app.include_router(users.router, prefix="/users", tags=["users"])
 app.include_router(items.router, prefix="/items", tags=["items"])

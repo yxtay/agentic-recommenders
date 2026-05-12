@@ -110,11 +110,15 @@ def client(
     app.dependency_overrides.clear()
 
 
-class TestGetInfo:
-    def test_returns_model_config(self, client: TestClient) -> None:
-        resp = client.get("/info")
+class TestHealthz:
+    def test_returns_health_and_config(self, client: TestClient) -> None:
+        resp = client.get("/healthz")
         assert resp.status_code == 200
         data = resp.json()
+        assert data["status"] == "ok"
+        assert "num_items" in data
+        assert "num_users" in data
+        assert "llm_ready" in data
         assert "embedder_name" in data
         assert "reranker_name" in data
         assert "llm_model" in data

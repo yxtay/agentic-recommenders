@@ -6,7 +6,7 @@ answerdotai reranking, and sqlalchemy-built WHERE clauses for SQL injection safe
 **Architecture:** `LanceIndexConfig` holds tunable parameters (paths, model names). `LanceIndex`
 wraps a LanceDB table; it lazily loads the embedder, schema, and reranker on first use via
 `functools.cached_property`. `index_data` creates the table and all three index types; `search`
-runs hybrid (vector + FTS) search and reranks results; `get_ids` does scalar-indexed point lookups.
+runs vector, FTS, or hybrid search and reranks results; `get_ids` does scalar-indexed point lookups.
 
 **Tech Stack:** lancedb, sentence-transformers (via lancedb registry), answerdotai rerankers
 (via lancedb), sqlalchemy (filter string generation), HuggingFace datasets, pydantic.
@@ -59,15 +59,15 @@ Input: `datasets.Dataset` with `id` and `text` columns. Steps:
 
 Early-return if `self.table` exists and `overwrite=False`.
 
-### 5. Implement `search(text, exclude_ids=None, limit=20)`
+### 5. Implement `search(text, query_type="hybrid", exclude_ids=None, limit=20)`
 
-Hybrid (vector + FTS) search with reranking. Steps:
+Vector, FTS, or hybrid search with reranking. Steps:
 
 1. Build prefilter via sqlalchemy if `exclude_ids` is non-empty:
     `column("id").not_in([literal(v) for v in exclude_ids])` compiled with `literal_binds=True`.
-2. Execute: `table.search(text, query_type="hybrid").rerank(reranker).limit(limit)`.
+2. Execute: `table.search(text, query_type=query_type).rerank(reranker).limit(limit)`.
     Apply `.where(filter_str, prefilter=True)` if filter exists.
-3. Convert result to `datasets.Dataset`, rename `_relevance_score` → `score`.
+3. Convert result to `pa.Table`, rename `_relevance_score` → `score`.
 
 Returns dataset with columns: `id`, `text`, `vector`, `score`.
 
@@ -118,5 +118,5 @@ Use a session-scoped fixture with a small synthetic dataset (100 items) for inte
 - **SQL injection safety**: never interpolate user-supplied IDs into SQL strings directly.
   Always use `sqlalchemy.literal()` with `literal_binds=True` compilation.
 - **IVF_RQ over IVF_HNSW_PQ**: simpler, fewer hyperparameters, adequate for MovieLens scale.
-- **`datasets.Dataset` as return type**: provides Arrow-backed memory efficiency and
+- **`pa.Table` as return type**: provides Arrow-backed memory efficiency and
   interoperability with the rest of the pipeline.

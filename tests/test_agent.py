@@ -91,7 +91,7 @@ class TestSearchItemsTool:
 
         result = tool.function(ctx, query="sci-fi action", exclude_ids=["1"], limit=10)
         mock_item_repo.search.assert_called_once_with(
-            "sci-fi action", exclude_ids=["1"], limit=10
+            "sci-fi action", query_type="hybrid", exclude_ids=["1"], limit=10
         )
         assert len(result) == 2
         assert all(isinstance(item, ItemCandidate) for item in result)

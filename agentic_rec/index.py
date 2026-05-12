@@ -142,14 +142,18 @@ class LanceIndex:
     def search(
         self,
         text: str,
+        query_type: str = "hybrid",
         exclude_ids: list[str] | None = None,
         limit: int = 20,
     ) -> pa.Table:
-        """Hybrid vector + FTS search with reranking, returning scored results."""
+        """Search with reranking, returning scored results.
+
+        query_type can be 'hybrid', 'vector', or 'fts'.
+        """
         assert self.table is not None
 
         query = (
-            self.table.search(text, query_type="hybrid")
+            self.table.search(text, query_type=query_type)
             .rerank(self.reranker)
             .limit(limit)
         )

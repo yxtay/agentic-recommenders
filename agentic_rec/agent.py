@@ -38,10 +38,13 @@ Workflow:
     emphasizing recent and highly-rated interactions.
 
 2. Candidate retrieval: call search_items 2-4 times with diverse queries.
+    - Use `query_type='fts'` for specific terms, names, or categories mentioned in the context.
+    - Use `query_type='vector'` for broad themes, "vibes", or similarity to the user's taste profile.
+    - Use `query_type='hybrid'` (default) for a balanced approach when you have both specific terms and general themes.
     - Derive queries from the context and taste profile.
     - Use the text field directly as one query if it contains useful preference signals.
     - Exclude already-interacted item IDs from all search calls.
-    - Aim for diversity: vary query angles.
+    - Aim for diversity: vary query angles and search methods.
 
 3. Cold-start: if history is empty, skip get_item_texts and rely solely on text.
 
@@ -56,20 +59,18 @@ Return a RecommendResponse with the ranked list of items.
 
 
 USER_INSTRUCTIONS = """\
-You are recommending movies for a user.
-Items are films described by title and genres.
+You are recommending items for a user.
 The text field contains user demographics and stated preferences.
 Use history and text to understand taste.
-Vary queries by genre, mood, era, and director style for diversity.
+Vary queries by category, attributes, and style for diversity.
 """
 
 ITEM_INSTRUCTIONS = """\
-You are recommending movies similar to a given movie.
-Items are films described by title and genres.
-The text field contains the source movie's title and genres.
-Find diverse but related films that someone who liked this movie would enjoy.
+You are recommending items similar to a given item.
+The text field contains the source item's description and attributes.
+Find diverse but related items that someone who liked this item would enjoy.
 There is no interaction history.
-Vary queries by genre, mood, era, and thematic similarity for diversity.
+Vary queries by category, attributes, and thematic similarity for diversity.
 """
 
 agent: pydantic_ai.Agent[AgentDeps, RecommendResponse] = pydantic_ai.Agent(
@@ -109,16 +110,19 @@ _item_candidate_adapter = pydantic.TypeAdapter(list[ItemCandidate])
 def search_items(
     ctx: RunContext[AgentDeps],
     query: str,
+    query_type: str = "hybrid",
     exclude_ids: list[str] | None = None,
     limit: int = 20,
 ) -> list[ItemCandidate]:
-    """Search for candidate items using hybrid vector + full-text search.
+    """Search for candidate items using vector, full-text, or hybrid search.
 
+    Use query_type='vector' for broad similarity, 'fts' for specific keywords,
+    and 'hybrid' for a balance of both.
     Call multiple times with diverse queries to maximize coverage.
     Pass exclude_ids to avoid recommending items the user has already seen.
     """
     result = ctx.deps.item_repository.search(
-        query, exclude_ids=exclude_ids, limit=limit
+        query, query_type=query_type, exclude_ids=exclude_ids, limit=limit
     )
     logger.info("search_items: {} results", result.num_rows)
     return _item_candidate_adapter.validate_python(result.to_pylist())

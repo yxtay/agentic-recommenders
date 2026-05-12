@@ -209,9 +209,9 @@ Two instruction sets for different recommendation modes:
 
 ### Tools
 
-| Tool             | Delegates to      | Purpose                                   |
-|------------------|-------------------|-------------------------------------------|
-| `get_item_texts` | `index.get_ids()` | Fetch text of interacted items by ID list |
+| Tool             | Delegates to      | Purpose                                           |
+|------------------|-------------------|---------------------------------------------------|
+| `get_item_texts` | `index.get_ids()` | Fetch text of interacted items by ID list         |
 | `search_items`   | `index.search()`  | Vector, FTS, or Hybrid search with exclude filter |
 
 ### Cold-start handling

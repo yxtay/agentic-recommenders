@@ -24,14 +24,14 @@ class RecommendationService:
 
     async def recommend(self, request: RecommendRequest) -> RecommendResponse:
         """Generate user-based recommendations."""
-        deps = AgentDeps(index=self.item_repository.index, request=request)
+        deps = AgentDeps(item_repository=self.item_repository, request=request)
         response = await self.rec_agent.run(instructions=USER_INSTRUCTIONS, deps=deps)
         logger.info("recommend: {} items", len(response.output.items))
         return response.output
 
     async def recommend_item(self, request: RecommendRequest) -> RecommendResponse:
         """Generate item-based recommendations."""
-        deps = AgentDeps(index=self.item_repository.index, request=request)
+        deps = AgentDeps(item_repository=self.item_repository, request=request)
         response = await self.rec_agent.run(instructions=ITEM_INSTRUCTIONS, deps=deps)
         logger.info("recommend_item: {} items", len(response.output.items))
         return response.output
@@ -44,7 +44,7 @@ class RecommendationService:
         if not user:
             return None
         user.history = user.history[-20:]
-        request = RecommendRequest.model_validate({**user.model_dump(), "limit": limit})
+        request = RecommendRequest(text=user.text, history=user.history, limit=limit)
         return await self.recommend(request)
 
     async def recommend_for_item(
@@ -54,5 +54,5 @@ class RecommendationService:
         item = self.item_repository.get_by_id(item_id)
         if not item:
             return None
-        request = RecommendRequest.model_validate({**item.model_dump(), "limit": limit})
+        request = RecommendRequest(text=item.text, limit=limit)
         return await self.recommend_item(request)

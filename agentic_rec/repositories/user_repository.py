@@ -12,6 +12,11 @@ class UserRepository:
     def __init__(self, index: LanceIndex) -> None:
         self.index = index
 
+    def count_rows(self) -> int:
+        if self.index.table is None:
+            return 0
+        return self.index.table.count_rows()
+
     def get_by_id(self, user_id: str) -> UserResponse | None:
         """Look up a user by ID."""
         result = self.index.get_ids([user_id])

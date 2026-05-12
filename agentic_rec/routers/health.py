@@ -22,12 +22,7 @@ async def healthz(
     """Return service health status."""
     return {
         "status": "ok",
-        "index_ready": items_repo.index.table is not None,
-        "num_items": items_repo.index.table.count_rows()
-        if items_repo.index.table
-        else 0,
-        "num_users": users_repo.index.table.count_rows()
-        if users_repo.index.table
-        else 0,
+        "num_items": items_repo.count_rows(),
+        "num_users": users_repo.count_rows(),
         "llm_ready": request.app.state.llm_ready,
     }

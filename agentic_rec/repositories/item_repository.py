@@ -14,6 +14,11 @@ class ItemRepository:
     def __init__(self, index: LanceIndex) -> None:
         self.index = index
 
+    def count_rows(self) -> int:
+        if self.index.table is None:
+            return 0
+        return self.index.table.count_rows()
+
     def get_by_id(self, item_id: str) -> ItemResponse | None:
         """Look up an item by ID."""
         result = self.index.get_ids([item_id])

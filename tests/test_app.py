@@ -27,7 +27,6 @@ def mock_index() -> MagicMock:
 @pytest.fixture
 def mock_users_index() -> MagicMock:
     users_index = MagicMock()
-    users_index.table.count_rows.return_value = 1
     users_index.get_ids.return_value = pa.table(
         {
             "id": ["1"],
@@ -72,7 +71,7 @@ def client(
     from agentic_rec.services.recommendation_service import RecommendationService
 
     item_repo = MagicMock(spec=ItemRepository)
-    item_repo.table = mock_index.table  # For health check count_rows
+    item_repo.count_rows.return_value = 1
 
     def get_item_by_id(item_id):
         res = mock_index.get_ids([item_id])
@@ -85,7 +84,7 @@ def client(
     item_repo.get_by_id.side_effect = get_item_by_id
 
     user_repo = MagicMock(spec=UserRepository)
-    user_repo.table = mock_users_index.table
+    user_repo.count_rows.return_value = 1
 
     def get_user_by_id(user_id):
         res = mock_users_index.get_ids([user_id])

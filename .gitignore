@@ -207,7 +207,7 @@ marimo/_lsp/
 __marimo__/
 
 /data
-/lance_db
-
 data.lock
+lance_db
+megalinter-reports
 settings.local.json

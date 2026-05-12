@@ -230,14 +230,35 @@ response = await agent.run(instructions=ITEM_INSTRUCTIONS, deps=AgentDeps(index,
 
 ## FastAPI Service
 
-**File:** `agentic_rec/app.py`
+**File:** `agentic_rec/main.py`
+
+### Architecture (3-Tier)
+
+This implementation follows a 3-tier architecture to separate concerns and improve testability:
+
+1. **Repository Layer (`agentic_rec/repositories/`)**:
+    Wraps `LanceIndex` to provide specialized data access for items and users.
+    - `ItemRepository`: search and point lookups for items.
+    - `UserRepository`: point lookups for users.
+
+2. **Service Layer (`agentic_rec/services/`)**:
+    Contains business logic and orchestrates the agent and repositories.
+    - `RecommendationService`: handles recommendation workflows (user-based, item-based, by ID).
+    - `UserService`: basic user management.
+    - `ItemService`: basic item management.
+
+3. **API Layer (`agentic_rec/routers/`)**:
+    FastAPI routers that handle HTTP requests and delegate to services.
+    - `recommendations.py`: all recommendation endpoints.
+    - `users.py`: user lookup endpoints.
+    - `items.py`: item lookup endpoints.
+    - `health.py`: system health and metadata.
 
 ### Routes
 
 | Route                        | Method | Description                                           |
 |------------------------------|--------|-------------------------------------------------------|
-| `/healthz`                   | GET    | Service health (index, users, LLM readiness)          |
-| `/info`                      | GET    | Model configuration (embedder, reranker, LLM)         |
+| `/healthz`                   | GET    | Service health and model configuration                |
 | `/recommend`                 | POST   | User-based recommendations (alias: `/recommend/user`) |
 | `/recommend/item`            | POST   | Item-based similar-item recommendations               |
 | `/users/{user_id}`           | GET    | Look up user by ID (text + history)                   |

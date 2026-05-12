@@ -12,12 +12,12 @@ from agentic_rec.models import ItemCandidate, RecommendRequest, RecommendRespons
 from agentic_rec.settings import settings
 
 if TYPE_CHECKING:
-    from agentic_rec.index import LanceIndex
+    from agentic_rec.repositories.item_repository import ItemRepository
 
 
 @dataclass
 class AgentDeps:
-    index: LanceIndex
+    item_repository: ItemRepository
     request: RecommendRequest
 
 
@@ -97,7 +97,7 @@ def get_item_texts(
     before generating search queries.
     """
     logger.info("get_item_texts: {} ids", len(item_ids))
-    result = ctx.deps.index.get_ids(item_ids)
+    result = ctx.deps.item_repository.get_by_ids(item_ids)
     logger.info("get_item_texts: {} results", result.num_rows)
     return {row["id"]: row["text"] for row in result.to_pylist()}
 
@@ -117,7 +117,9 @@ def search_items(
     Call multiple times with diverse queries to maximize coverage.
     Pass exclude_ids to avoid recommending items the user has already seen.
     """
-    result = ctx.deps.index.search(query, exclude_ids=exclude_ids, limit=limit)
+    result = ctx.deps.item_repository.search(
+        query, exclude_ids=exclude_ids, limit=limit
+    )
     logger.info("search_items: {} results", result.num_rows)
     return _item_candidate_adapter.validate_python(result.to_pylist())
 
@@ -147,10 +149,12 @@ def main(limit: int = 5) -> None:
 
     import agentic_rec.index
     from agentic_rec.index import LanceIndex, LanceIndexConfig
+    from agentic_rec.repositories.item_repository import ItemRepository
 
     agentic_rec.index.main(overwrite=False)
     index = LanceIndex(LanceIndexConfig())
     index.open_table()
+    item_repository = ItemRepository(index)
 
     users_table = pq.read_table(settings.users_parquet, memory_map=True)
     sample_idx = random.randrange(users_table.num_rows)
@@ -159,7 +163,7 @@ def main(limit: int = 5) -> None:
     request.history = request.history[-20:]
     rich.print(request)
 
-    deps = AgentDeps(index=index, request=request)
+    deps = AgentDeps(item_repository=item_repository, request=request)
     response = asyncio.run(agent.run(instructions=USER_INSTRUCTIONS, deps=deps))
     rich.print(response.output.items)
 

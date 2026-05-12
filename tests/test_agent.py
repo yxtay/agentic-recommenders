@@ -15,19 +15,19 @@ from agentic_rec.models import (
 
 
 @pytest.fixture
-def mock_index() -> MagicMock:
-    index = MagicMock()
-    index.get_ids.return_value = pa.table(
+def mock_item_repo() -> MagicMock:
+    repo = MagicMock()
+    repo.get_by_ids.return_value = pa.table(
         {"id": ["1", "2"], "text": ["Movie A (1999)", "Movie B (2000)"]}
     )
-    index.search.return_value = pa.table(
+    repo.search.return_value = pa.table(
         {
             "id": ["3", "4"],
             "text": ["Action Movie (2001)", "Drama Film (2002)"],
             "score": [0.9, 0.8],
         }
     )
-    return index
+    return repo
 
 
 @pytest.fixture
@@ -67,30 +67,30 @@ class TestAgentStructure:
 
 
 class TestGetItemTextsTool:
-    def test_delegates_to_index(
-        self, mock_index: MagicMock, sample_request: RecommendRequest
+    def test_delegates_to_repository(
+        self, mock_item_repo: MagicMock, sample_request: RecommendRequest
     ) -> None:
         toolset = agent.toolsets[0]
         tool = toolset.tools["get_item_texts"]
         ctx = MagicMock()
-        ctx.deps = AgentDeps(index=mock_index, request=sample_request)
+        ctx.deps = AgentDeps(item_repository=mock_item_repo, request=sample_request)
 
         result = tool.function(ctx, item_ids=["1", "2"])
-        mock_index.get_ids.assert_called_once_with(["1", "2"])
+        mock_item_repo.get_by_ids.assert_called_once_with(["1", "2"])
         assert result == {"1": "Movie A (1999)", "2": "Movie B (2000)"}
 
 
 class TestSearchItemsTool:
-    def test_delegates_to_index(
-        self, mock_index: MagicMock, sample_request: RecommendRequest
+    def test_delegates_to_repository(
+        self, mock_item_repo: MagicMock, sample_request: RecommendRequest
     ) -> None:
         toolset = agent.toolsets[0]
         tool = toolset.tools["search_items"]
         ctx = MagicMock()
-        ctx.deps = AgentDeps(index=mock_index, request=sample_request)
+        ctx.deps = AgentDeps(item_repository=mock_item_repo, request=sample_request)
 
         result = tool.function(ctx, query="sci-fi action", exclude_ids=["1"], limit=10)
-        mock_index.search.assert_called_once_with(
+        mock_item_repo.search.assert_called_once_with(
             "sci-fi action", exclude_ids=["1"], limit=10
         )
         assert len(result) == 2

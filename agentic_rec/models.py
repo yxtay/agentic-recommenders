@@ -45,7 +45,11 @@ class ItemResponse(pydantic.BaseModel):
     text: str
 
 
-class InfoResponse(pydantic.BaseModel):
+class HealthResponse(pydantic.BaseModel):
+    status: str
+    num_items: int
+    num_users: int
+    llm_ready: bool
     embedder_name: str
     reranker_name: str
     llm_model: str

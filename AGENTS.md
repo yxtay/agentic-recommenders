@@ -36,7 +36,7 @@ uv run agent
 uv run app
 
 # serve FastAPI endpoint
-uv run fastapi run
+uv run fastapi run agentic_rec.main:app
 
 # lint and format
 uv run ruff check --fix .

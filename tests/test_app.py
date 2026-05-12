@@ -10,7 +10,8 @@ import pyarrow as pa
 import pytest
 from fastapi.testclient import TestClient
 
-from agentic_rec.app import app, get_agent, get_items_index, get_users_index
+from agentic_rec.dependencies import get_item_repository, get_user_repository
+from agentic_rec.main import app
 from agentic_rec.models import ItemRecommended, RecommendResponse
 
 
@@ -26,7 +27,6 @@ def mock_index() -> MagicMock:
 @pytest.fixture
 def mock_users_index() -> MagicMock:
     users_index = MagicMock()
-    users_index.table.count_rows.return_value = 1
     users_index.get_ids.return_value = pa.table(
         {
             "id": ["1"],
@@ -60,28 +60,66 @@ def mock_agent_response() -> RecommendResponse:
 
 
 @pytest.fixture
-def mock_agent(mock_agent_response: RecommendResponse) -> MagicMock:
-    agent = MagicMock()
-    agent.run = AsyncMock(return_value=MagicMock(output=mock_agent_response))
-    return agent
-
-
-@pytest.fixture
 def client(
-    mock_index: MagicMock, mock_users_index: MagicMock, mock_agent: MagicMock
+    mock_index: MagicMock,
+    mock_users_index: MagicMock,
+    mock_agent_response: RecommendResponse,
 ) -> Iterator[TestClient]:
-    app.dependency_overrides[get_items_index] = lambda: mock_index
-    app.dependency_overrides[get_users_index] = lambda: mock_users_index
-    app.dependency_overrides[get_agent] = lambda: mock_agent
+    from agentic_rec.dependencies import get_recommendation_service
+    from agentic_rec.repositories.item_repository import ItemRepository
+    from agentic_rec.repositories.user_repository import UserRepository
+    from agentic_rec.services.recommendation_service import RecommendationService
+
+    item_repo = MagicMock(spec=ItemRepository)
+    item_repo.count_rows.return_value = 1
+
+    def get_item_by_id(item_id):
+        res = mock_index.get_ids([item_id])
+        if res.num_rows == 0:
+            return None
+        from agentic_rec.models import ItemResponse
+
+        return ItemResponse.model_validate(res.to_pylist()[0])
+
+    item_repo.get_by_id.side_effect = get_item_by_id
+
+    user_repo = MagicMock(spec=UserRepository)
+    user_repo.count_rows.return_value = 1
+
+    def get_user_by_id(user_id):
+        res = mock_users_index.get_ids([user_id])
+        if res.num_rows == 0:
+            return None
+        from agentic_rec.models import UserResponse
+
+        return UserResponse.model_validate(res.to_pylist()[0])
+
+    user_repo.get_by_id.side_effect = get_user_by_id
+
+    rec_service = MagicMock(spec=RecommendationService)
+    rec_service.recommend = AsyncMock(return_value=mock_agent_response)
+    rec_service.recommend_item = AsyncMock(return_value=mock_agent_response)
+    rec_service.recommend_for_user = AsyncMock(return_value=mock_agent_response)
+    rec_service.recommend_for_item = AsyncMock(return_value=mock_agent_response)
+
+    app.dependency_overrides[get_item_repository] = lambda: item_repo
+    app.dependency_overrides[get_user_repository] = lambda: user_repo
+    app.dependency_overrides[get_recommendation_service] = lambda: rec_service
+    app.state.llm_ready = True
+
     yield TestClient(app)
     app.dependency_overrides.clear()
 
 
-class TestGetInfo:
-    def test_returns_model_config(self, client: TestClient) -> None:
-        resp = client.get("/info")
+class TestHealthz:
+    def test_returns_health_and_config(self, client: TestClient) -> None:
+        resp = client.get("/healthz")
         assert resp.status_code == 200
         data = resp.json()
+        assert data["status"] == "ok"
+        assert "num_items" in data
+        assert "num_users" in data
+        assert "llm_ready" in data
         assert "embedder_name" in data
         assert "reranker_name" in data
         assert "llm_model" in data
@@ -111,7 +149,6 @@ class TestGetItem:
         data = resp.json()
         assert data["id"] == "42"
         assert "text" in data
-        mock_index.get_ids.assert_called_once_with(["42"])
 
     def test_not_found(self, client: TestClient, mock_index: MagicMock) -> None:
         mock_index.get_ids.return_value = pa.table({"id": [], "text": []})
@@ -141,9 +178,14 @@ class TestRecommendUser:
     def test_user_not_found(
         self, client: TestClient, mock_users_index: MagicMock
     ) -> None:
-        mock_users_index.get_ids.return_value = pa.table(
-            {"id": [], "text": [], "history": []}
-        )
+        # In our new architecture, the router calls rec_service.recommend_for_user
+        # and if it returns None, raises 404.
+        # So we need to mock rec_service to return None.
+        from agentic_rec.dependencies import get_recommendation_service
+
+        rec_service = app.dependency_overrides[get_recommendation_service]()
+        rec_service.recommend_for_user.return_value = None
+
         resp = client.post("/users/999/recommend")
         assert resp.status_code == 404
 
@@ -156,6 +198,10 @@ class TestRecommendItem:
         assert "items" in data
 
     def test_item_not_found(self, client: TestClient, mock_index: MagicMock) -> None:
-        mock_index.get_ids.return_value = pa.table({"id": [], "text": []})
+        from agentic_rec.dependencies import get_recommendation_service
+
+        rec_service = app.dependency_overrides[get_recommendation_service]()
+        rec_service.recommend_for_item.return_value = None
+
         resp = client.post("/items/999/recommend")
         assert resp.status_code == 404

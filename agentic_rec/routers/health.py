@@ -1,16 +1,14 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Annotated
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, Request
 
 from agentic_rec.dependencies import get_item_repository, get_user_repository
 from agentic_rec.models import HealthResponse
+from agentic_rec.repositories.item_repository import ItemRepository  # noqa: TC001
+from agentic_rec.repositories.user_repository import UserRepository  # noqa: TC001
 from agentic_rec.settings import settings
-
-if TYPE_CHECKING:
-    from agentic_rec.repositories.item_repository import ItemRepository
-    from agentic_rec.repositories.user_repository import UserRepository
 
 router = APIRouter()
 

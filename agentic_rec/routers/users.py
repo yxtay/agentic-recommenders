@@ -1,12 +1,9 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 from fastapi import APIRouter, HTTPException
 
-if TYPE_CHECKING:
-    from agentic_rec.dependencies import UserServiceDep
-    from agentic_rec.models import UserResponse
+from agentic_rec.dependencies import UserServiceDep  # noqa: TC001
+from agentic_rec.models import UserResponse  # noqa: TC001
 
 router = APIRouter()
 

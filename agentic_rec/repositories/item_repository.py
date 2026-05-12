@@ -35,8 +35,11 @@ class ItemRepository:
     def search(
         self,
         query: str,
+        query_type: str = "hybrid",
         exclude_ids: list[str] | None = None,
         limit: int = 20,
     ) -> pa.Table:
         """Search for items."""
-        return self.index.search(query, exclude_ids=exclude_ids, limit=limit)
+        return self.index.search(
+            query, query_type=query_type, exclude_ids=exclude_ids, limit=limit
+        )

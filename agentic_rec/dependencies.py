@@ -19,21 +19,20 @@ def get_user_repository(request: Request) -> UserRepository:
     return UserRepository(request.app.state.users_index)
 
 
-def get_item_service(
-    repo: ItemRepository = Depends(get_item_repository),
-) -> ItemService:
+ItemRepoDep = Annotated[ItemRepository, Depends(get_item_repository)]
+UserRepoDep = Annotated[UserRepository, Depends(get_user_repository)]
+
+
+def get_item_service(repo: ItemRepoDep) -> ItemService:
     return ItemService(repo)
 
 
-def get_user_service(
-    repo: UserRepository = Depends(get_user_repository),
-) -> UserService:
+def get_user_service(repo: UserRepoDep) -> UserService:
     return UserService(repo)
 
 
 def get_recommendation_service(
-    item_repo: ItemRepository = Depends(get_item_repository),
-    user_repo: UserRepository = Depends(get_user_repository),
+    item_repo: ItemRepoDep, user_repo: UserRepoDep
 ) -> RecommendationService:
     return RecommendationService(item_repo, user_repo)
 

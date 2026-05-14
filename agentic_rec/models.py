@@ -13,15 +13,23 @@ class Interaction(pydantic.BaseModel):
 
 
 class ItemCandidate(pydantic.BaseModel):
-    id: str
-    text: str
-    score: float = 0.0
+    id: str = pydantic.Field(description="Unique item identifier.")
+    text: str = pydantic.Field(description="Full text description of the item.")
+    score: float = pydantic.Field(
+        default=0.0, description="Relevance score from search."
+    )
 
 
 class ItemRecommended(pydantic.BaseModel):
-    id: str
-    text: str
-    explanation: str
+    id: str = pydantic.Field(
+        description="Item ID, exactly as returned by search_items."
+    )
+    text: str = pydantic.Field(
+        description="Item text, exactly as returned by search_items."
+    )
+    explanation: str = pydantic.Field(
+        description="Concise reason for recommending this item, e.g. 'Because you...'."
+    )
 
 
 class RecommendRequest(pydantic.BaseModel):
@@ -31,7 +39,9 @@ class RecommendRequest(pydantic.BaseModel):
 
 
 class RecommendResponse(pydantic.BaseModel):
-    items: list[ItemRecommended]
+    items: list[ItemRecommended] = pydantic.Field(
+        description="Ranked list of recommended items, deduplicated and excluding previously interacted items."
+    )
 
 
 class UserResponse(pydantic.BaseModel):

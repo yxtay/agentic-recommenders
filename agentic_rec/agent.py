@@ -29,38 +29,33 @@ Workflow:
 1. Context understanding:
     Analyze the text field for explicit preferences or item attributes.
     If history is not empty, call get_item_texts with all interacted item IDs.
-    Combine text signals with retrieved item texts and event values
-    to build a preference summary, emphasizing recent and highly-rated interactions.
+    Combine text signals with retrieved item texts and event values to build
+    a preference summary. Weight interactions with higher event_value and
+    more recent event_datetime.
+    If history is empty, rely solely on text.
 
-2. Candidate retrieval: call search_items 2-4 times with diverse queries.
-    - Derive queries from the text field, the preference summary, and retrieved item texts.
-    - Use `query_type='fts'` for specific terms, `query_type='vector'` for broad themes,
-        and `query_type='hybrid'` for a balanced approach.
-    - Exclude already-interacted item IDs from all search calls.
-    - Aim for diversity: vary query angles and search methods.
+2. Candidate retrieval: call search_items with at least 2 diverse queries.
+    Use more queries when the preference summary reveals varied interests.
+    Generate concise queries capturing different aspects of user taste.
+    Exclude already-interacted item IDs from all search calls.
 
-3. Cold-start: if history is empty, skip get_item_texts and rely solely on text.
-
-4. Ranking: from all candidates, select the limit items.
-    - Deduplicate candidates by item ID, keeping the highest-scoring occurrence.
-    - Exclude any item IDs that appear in the interaction history.
-    - Rank by relevance and diversity.
+3. Ranking: from all candidates, select the limit items.
+    Deduplicate candidates by item ID.
+    Exclude any item IDs from the interaction history.
+    Rank by relevance and diversity.
 """
 
 
 USER_INSTRUCTIONS = """\
 You are recommending items for a user.
 The text field contains user demographics and stated preferences.
-Use history and text to understand taste.
-Vary queries by category, attributes, and style for diversity.
+Prioritize taste patterns from recent history over older interactions.
 """
 
 ITEM_INSTRUCTIONS = """\
 You are recommending items similar to a given item.
 The text field contains the source item's description and attributes.
-Find diverse but related items that someone who liked this item would enjoy.
-There is no interaction history.
-Vary queries by category, attributes, and thematic similarity for diversity.
+Prioritize attribute and thematic similarity to the source item.
 """
 
 agent: pydantic_ai.Agent[AgentDeps, RecommendResponse] = pydantic_ai.Agent(
@@ -82,11 +77,7 @@ def get_item_texts(
     ctx: RunContext[AgentDeps],
     item_ids: list[str],
 ) -> dict[str, str]:
-    """Look up the full text descriptions for items by their IDs.
-
-    Use this to understand what items the user has interacted with
-    before generating search queries.
-    """
+    """Look up full text descriptions for items by their IDs."""
     logger.info("get_item_texts: {} ids", len(item_ids))
     result = ctx.deps.item_repository.get_by_ids(item_ids)
     logger.info("get_item_texts: {} results", result.num_rows)
@@ -106,10 +97,8 @@ def search_items(
 ) -> list[ItemCandidate]:
     """Search for candidate items using vector, full-text, or hybrid search.
 
-    Use query_type='vector' for broad similarity, 'fts' for specific keywords,
-    and 'hybrid' for a balance of both.
-    Call multiple times with diverse queries to maximize coverage.
-    Pass exclude_ids to avoid recommending items the user has already seen.
+    Use 'vector' for broad thematic similarity, 'fts' for specific terms
+    or names, and 'hybrid' when both apply.
     """
     result = ctx.deps.item_repository.search(
         query, query_type=query_type, exclude_ids=exclude_ids, limit=limit

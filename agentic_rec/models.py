@@ -23,12 +23,6 @@ class Interaction(pydantic.BaseModel):
     )
 
 
-InteractionHistory = Annotated[
-    list[Interaction],
-    pydantic.Field(default=[], description="Interaction history."),
-]
-
-
 class ItemCandidate(pydantic.BaseModel):
     id: ItemId
     text: ItemText
@@ -49,7 +43,10 @@ class RecommendRequest(pydantic.BaseModel):
     text: str = pydantic.Field(
         description="User profile or item description as context."
     )
-    history: InteractionHistory
+    history: list[Interaction] = pydantic.Field(
+        default=[],
+        description="Past interactions; empty for cold-start or item-based requests.",
+    )
     limit: int = pydantic.Field(default=10, description="Number of items to recommend.")
 
 
@@ -62,7 +59,9 @@ class RecommendResponse(pydantic.BaseModel):
 class UserResponse(pydantic.BaseModel):
     id: UserId
     text: str = pydantic.Field(description="User demographics and stated preferences.")
-    history: InteractionHistory
+    history: list[Interaction] = pydantic.Field(
+        default=[], description="User's interaction history."
+    )
 
 
 class ItemResponse(pydantic.BaseModel):

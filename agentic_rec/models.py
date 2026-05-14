@@ -17,7 +17,9 @@ class Interaction(pydantic.BaseModel):
     event_datetime: datetime = pydantic.Field(
         description="When the interaction occurred."
     )
-    event_name: str = pydantic.Field(description="Type of interaction, e.g. 'rating'.")
+    event_name: str = pydantic.Field(
+        description="Type of interaction, e.g. 'rating', 'click', 'purchase', 'watch'."
+    )
     event_value: float = pydantic.Field(
         description="Interaction value, e.g. rating score."
     )

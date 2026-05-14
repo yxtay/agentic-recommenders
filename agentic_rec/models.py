@@ -1,8 +1,15 @@
 from __future__ import annotations
 
 from datetime import datetime  # noqa: TC003
+from typing import Annotated
 
 import pydantic
+
+ItemId = Annotated[str, pydantic.Field(description="Unique item identifier.")]
+ItemText = Annotated[
+    str, pydantic.Field(description="Full text description of the item.")
+]
+UserId = Annotated[str, pydantic.Field(description="Unique user identifier.")]
 
 
 class Interaction(pydantic.BaseModel):
@@ -16,21 +23,23 @@ class Interaction(pydantic.BaseModel):
     )
 
 
+InteractionHistory = Annotated[
+    list[Interaction],
+    pydantic.Field(default=[], description="Interaction history."),
+]
+
+
 class ItemCandidate(pydantic.BaseModel):
-    id: str = pydantic.Field(description="Unique item identifier.")
-    text: str = pydantic.Field(description="Full text description of the item.")
+    id: ItemId
+    text: ItemText
     score: float = pydantic.Field(
         default=0.0, description="Relevance score from search."
     )
 
 
 class ItemRecommended(pydantic.BaseModel):
-    id: str = pydantic.Field(
-        description="Item ID, exactly as returned by search_items."
-    )
-    text: str = pydantic.Field(
-        description="Item text, exactly as returned by search_items."
-    )
+    id: ItemId
+    text: ItemText
     explanation: str = pydantic.Field(
         description="Concise reason for recommending this item, e.g. 'Because you...'."
     )
@@ -40,10 +49,7 @@ class RecommendRequest(pydantic.BaseModel):
     text: str = pydantic.Field(
         description="User profile or item description as context."
     )
-    history: list[Interaction] = pydantic.Field(
-        default=[],
-        description="Past interactions; empty for cold-start or item-based requests.",
-    )
+    history: InteractionHistory
     limit: int = pydantic.Field(default=10, description="Number of items to recommend.")
 
 
@@ -54,16 +60,14 @@ class RecommendResponse(pydantic.BaseModel):
 
 
 class UserResponse(pydantic.BaseModel):
-    id: str = pydantic.Field(description="Unique user identifier.")
+    id: UserId
     text: str = pydantic.Field(description="User demographics and stated preferences.")
-    history: list[Interaction] = pydantic.Field(
-        default=[], description="User's interaction history."
-    )
+    history: InteractionHistory
 
 
 class ItemResponse(pydantic.BaseModel):
-    id: str = pydantic.Field(description="Unique item identifier.")
-    text: str = pydantic.Field(description="Full text description of the item.")
+    id: ItemId
+    text: ItemText
 
 
 class HealthResponse(pydantic.BaseModel):

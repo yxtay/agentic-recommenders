@@ -6,10 +6,14 @@ import pydantic
 
 
 class Interaction(pydantic.BaseModel):
-    item_id: str
-    event_datetime: datetime
-    event_name: str
-    event_value: float
+    item_id: str = pydantic.Field(description="ID of the interacted item.")
+    event_datetime: datetime = pydantic.Field(
+        description="When the interaction occurred."
+    )
+    event_name: str = pydantic.Field(description="Type of interaction, e.g. 'rating'.")
+    event_value: float = pydantic.Field(
+        description="Interaction value, e.g. rating score."
+    )
 
 
 class ItemCandidate(pydantic.BaseModel):
@@ -33,9 +37,14 @@ class ItemRecommended(pydantic.BaseModel):
 
 
 class RecommendRequest(pydantic.BaseModel):
-    text: str
-    history: list[Interaction] = []
-    limit: int = 10
+    text: str = pydantic.Field(
+        description="User profile or item description as context."
+    )
+    history: list[Interaction] = pydantic.Field(
+        default=[],
+        description="Past interactions; empty for cold-start or item-based requests.",
+    )
+    limit: int = pydantic.Field(default=10, description="Number of items to recommend.")
 
 
 class RecommendResponse(pydantic.BaseModel):
@@ -45,21 +54,23 @@ class RecommendResponse(pydantic.BaseModel):
 
 
 class UserResponse(pydantic.BaseModel):
-    id: str
-    text: str
-    history: list[Interaction] = []
+    id: str = pydantic.Field(description="Unique user identifier.")
+    text: str = pydantic.Field(description="User demographics and stated preferences.")
+    history: list[Interaction] = pydantic.Field(
+        default=[], description="User's interaction history."
+    )
 
 
 class ItemResponse(pydantic.BaseModel):
-    id: str
-    text: str
+    id: str = pydantic.Field(description="Unique item identifier.")
+    text: str = pydantic.Field(description="Full text description of the item.")
 
 
 class HealthResponse(pydantic.BaseModel):
-    status: str
-    num_items: int
-    num_users: int
-    llm_ready: bool
-    embedder_name: str
-    reranker_name: str
-    llm_model: str
+    status: str = pydantic.Field(description="Service health status.")
+    num_items: int = pydantic.Field(description="Number of items in the index.")
+    num_users: int = pydantic.Field(description="Number of users in the index.")
+    llm_ready: bool = pydantic.Field(description="Whether the LLM API is reachable.")
+    embedder_name: str = pydantic.Field(description="Configured embedding model name.")
+    reranker_name: str = pydantic.Field(description="Configured reranker model name.")
+    llm_model: str = pydantic.Field(description="Configured LLM model identifier.")

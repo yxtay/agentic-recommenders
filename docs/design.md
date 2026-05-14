@@ -10,9 +10,9 @@
 
 A simplified single-agent implementation inspired by the ARAG framework, applied to MovieLens 1M.
 A single `pydantic-ai` `Agent` orchestrates recommendation via two tools: item text lookup (by ID)
-and candidate retrieval (hybrid search). The agent derives a preference summary from the user's
-interaction history, issues multiple targeted retrieval queries for diversity, then ranks candidates
-with per-item explanations. Served via FastAPI.
+and candidate retrieval (hybrid search). The agent analyzes the input text and interaction history
+to build a preference summary, issues diverse retrieval queries, then deduplicates, ranks, and
+explains recommendations. Served via FastAPI.
 
 ### Relationship to the paper
 
@@ -49,28 +49,18 @@ differences from the paper:
 ```text
 Request (text, history: [{item_id, event_datetime, event_name, event_value}], limit)
     │
-    ├─ [Tool 1] get_item_texts(item_ids)    ← skipped if history is empty (cold-start)
-    │           Looks up item text in LanceDB by item_id.
-    │           Returns {item_id: item_text} for all interacted items.
+    ├─ [Tool] get_item_texts(item_ids)              ← skipped if cold-start
+    │         Returns {item_id: item_text} from LanceDB.
     │
-    ├─ LLM: context understanding (no tool call)
-    │           Using text, interaction details (timestamp, event_name,
-    │           event_value), and retrieved item texts, produces a
-    │           natural-language preference summary.
+    ├─ LLM: context understanding
+    │         Builds preference summary from text + item texts + event values.
     │
-    ├─ [Tool 2] search_items(query, query_type, exclude_ids, limit)    ← called 2-4 times
-    │           Vector, FTS, or Hybrid search on LanceDB items table.
-    │           Interacted item_ids always excluded.
-    │           Agent issues multiple queries for diversity:
-    │             • item_text of a recent highly-rated interaction
-    │             • hypothetical item text generated from preference summary
-    │             • text-derived query (stated genre/style preferences)
-    │           → list[ItemCandidate] (deduplicated across calls)
+    ├─ [Tool] search_items(query, query_type, ...)   ← called 2-4 times
+    │         Vector/FTS/Hybrid search, interacted IDs excluded.
+    │         Queries derived from text, preference summary, item texts.
     │
-    └─ LLM: rank + explain (no tool call)
-                Ranks deduplicated candidates by relevance and diversity.
-                Attaches a one-sentence explanation per item.
-                → RecommendResponse
+    └─ LLM: deduplicate, rank, explain
+              → RecommendResponse
 ```
 
 ---
@@ -79,41 +69,48 @@ Request (text, history: [{item_id, event_datetime, event_name, event_value}], li
 
 Defined in `agentic_rec/models.py`:
 
+All models use `pydantic.Field(description=...)` for OpenAPI documentation.
+Shared field types are defined as `Annotated` aliases: `ItemId`, `ItemText`, `UserId`, `InteractionHistory`.
+
 ```python
 class Interaction(pydantic.BaseModel):
-    item_id: str
+    item_id: ItemId
     event_datetime: datetime
-    event_name: str
+    event_name: str          # e.g. 'rating', 'click', 'purchase', 'watch'
     event_value: float
 
 class ItemCandidate(pydantic.BaseModel):
-    id: str
-    text: str
+    id: ItemId
+    text: ItemText
     score: float = 0.0
 
 class ItemRecommended(pydantic.BaseModel):
-    id: str
-    text: str
+    id: ItemId
+    text: ItemText
     explanation: str
 
 class RecommendRequest(pydantic.BaseModel):
-    text: str                       # user demographics / preferences, or item description
-    history: list[Interaction] = [] # past interactions; empty for cold-start
+    text: str                         # user profile or item description
+    history: InteractionHistory       # default []; empty for cold-start
     limit: int = 10
 
 class RecommendResponse(pydantic.BaseModel):
     items: list[ItemRecommended]
 
 class UserResponse(pydantic.BaseModel):
-    id: str
+    id: UserId
     text: str
-    history: list[Interaction] = []
+    history: InteractionHistory
 
 class ItemResponse(pydantic.BaseModel):
-    id: str
-    text: str
+    id: ItemId
+    text: ItemText
 
-class InfoResponse(pydantic.BaseModel):
+class HealthResponse(pydantic.BaseModel):
+    status: str
+    num_items: int
+    num_users: int
+    llm_ready: bool
     embedder_name: str
     reranker_name: str
     llm_model: str
@@ -187,14 +184,15 @@ Module-level `pydantic_ai.Agent[AgentDeps, RecommendResponse]` singleton configu
 ```python
 @dataclass
 class AgentDeps:
-    index: LanceIndex
+    item_repository: ItemRepository
     request: RecommendRequest
 ```
 
 ### Prompt structure
 
-- **`system_prompt`** (static): generic item recommendation workflow — context understanding,
-  candidate retrieval, cold-start handling, ranking with explanations. Domain-agnostic.
+- **`system_prompt`** (static): domain-agnostic recommendation workflow — context understanding,
+  candidate retrieval, cold-start handling, deduplication, and ranking. Output schema field
+  descriptions (via `pydantic.Field`) guide the LLM on response format.
 - **`@agent.instructions`** (dynamic): serializes `ctx.deps.request` as JSON per-request.
 - **Runtime `instructions`** (per call site): domain-specific context passed at `agent.run(instructions=...)`.
 
@@ -202,17 +200,20 @@ class AgentDeps:
 
 Two instruction sets for different recommendation modes:
 
-- **`USER_INSTRUCTIONS`** — user-based: "items are films", "text contains user demographics",
-  "use history and text to understand taste".
-- **`ITEM_INSTRUCTIONS`** — item-based (similar items): "text contains the source movie",
-  "find diverse but related films", "no interaction history".
+- **`USER_INSTRUCTIONS`** — user-based: text contains user demographics and preferences,
+  use history and text to understand taste, vary queries for diversity.
+- **`ITEM_INSTRUCTIONS`** — item-based (similar items): text contains source item description,
+  find diverse but related items, no interaction history.
 
 ### Tools
 
-| Tool             | Delegates to      | Purpose                                           |
-|------------------|-------------------|---------------------------------------------------|
-| `get_item_texts` | `index.get_ids()` | Fetch text of interacted items by ID list         |
-| `search_items`   | `index.search()`  | Vector, FTS, or Hybrid search with exclude filter |
+| Tool             | Delegates to                 | Purpose                                           |
+|------------------|------------------------------|---------------------------------------------------|
+| `get_item_texts` | `item_repository.get_by_ids` | Fetch text of interacted items by ID list         |
+| `search_items`   | `item_repository.search`     | Vector, FTS, or Hybrid search with exclude filter |
+
+Both tools use `strict=True` for OpenAI-compatible API compliance.
+`search_items` accepts `query_type: Literal["vector", "fts", "hybrid"]`.
 
 ### Cold-start handling
 
@@ -222,8 +223,8 @@ signal. This is the natural path for item-based recommendations (item text, no h
 ### Invocation
 
 ```python
-response = await agent.run(instructions=USER_INSTRUCTIONS, deps=AgentDeps(index, request))
-response = await agent.run(instructions=ITEM_INSTRUCTIONS, deps=AgentDeps(index, request))
+response = await agent.run(instructions=USER_INSTRUCTIONS, deps=AgentDeps(item_repository, request))
+response = await agent.run(instructions=ITEM_INSTRUCTIONS, deps=AgentDeps(item_repository, request))
 ```
 
 ---
@@ -276,10 +277,10 @@ Resources loaded once via FastAPI lifespan context manager:
 
 ### Dependencies
 
-Injected via FastAPI `Depends`:
+Injected via FastAPI `Depends` (defined in `agentic_rec/dependencies.py`):
 
-- `ItemsIndexDep` — items `LanceIndex` from app state
-- `UsersIndexDep` — users `LanceIndex` from app state
+- `ItemRepoDep`, `UserRepoDep` — repository-level dependencies from app state
+- `ItemServiceDep`, `UserServiceDep`, `RecServiceDep` — service-level dependencies
 
 ### Data flow
 
@@ -287,8 +288,8 @@ Injected via FastAPI `Depends`:
 
 **`POST /recommend/item`** — invokes `agent.run(instructions=ITEM_INSTRUCTIONS, deps=...)`.
 
-**`POST /users/{user_id}/recommend`** — looks up user, truncates history to last 20 interactions,
-builds `RecommendRequest`, delegates to `/recommend`.
+**`POST /users/{user_id}/recommend`** — looks up user, builds `RecommendRequest` from user text
+and full history, delegates to `/recommend`.
 
 **`POST /items/{item_id}/recommend`** — looks up item text, builds `RecommendRequest(text=item_text,
 history=[], limit=limit)`, delegates to `/recommend/item`.
@@ -301,20 +302,20 @@ history=[], limit=limit)`, delegates to `/recommend/item`.
 
 `pydantic-settings` `Settings` class with `env_prefix="AGENTIC_REC_"`:
 
-| Setting            | Default                | Env var                        |
-|--------------------|------------------------|--------------------------------|
-| `llm_model`        | `cerebras:llama3.1-8b` | `AGENTIC_REC_LLM_MODEL`        |
-| `embedder_name`    | `lightonai/DenseOn`    | `AGENTIC_REC_EMBEDDER_NAME`    |
-| `reranker_name`    | `lightonai/LateOn`     | `AGENTIC_REC_RERANKER_NAME`    |
-| `reranker_type`    | `pylate`               | `AGENTIC_REC_RERANKER_TYPE`    |
-| `lance_db_path`    | `lance_db`             | `AGENTIC_REC_LANCE_DB_PATH`    |
-| `items_table_name` | `items`                | `AGENTIC_REC_ITEMS_TABLE_NAME` |
-| `data_dir`         | `data`                 | `AGENTIC_REC_DATA_DIR`         |
+| Setting            | Default                 | Env var                        |
+|--------------------|-------------------------|--------------------------------|
+| `llm_model`        | `cerebras:gpt-oss-120b` | `AGENTIC_REC_LLM_MODEL`        |
+| `embedder_name`    | `lightonai/DenseOn`     | `AGENTIC_REC_EMBEDDER_NAME`    |
+| `reranker_name`    | `lightonai/LateOn`      | `AGENTIC_REC_RERANKER_NAME`    |
+| `reranker_type`    | `pylate`                | `AGENTIC_REC_RERANKER_TYPE`    |
+| `lance_db_path`    | `lance_db`              | `AGENTIC_REC_LANCE_DB_PATH`    |
+| `items_table_name` | `items`                 | `AGENTIC_REC_ITEMS_TABLE_NAME` |
+| `data_dir`         | `data`                  | `AGENTIC_REC_DATA_DIR`         |
 
 Set the LLM model and its matching API key:
 
 ```bash
-export AGENTIC_REC_LLM_MODEL="cerebras:llama3.1-8b"
+export AGENTIC_REC_LLM_MODEL="cerebras:gpt-oss-120b"
 export CEREBRAS_API_KEY="..."
 ```
 

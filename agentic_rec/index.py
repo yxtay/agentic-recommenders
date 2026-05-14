@@ -4,7 +4,7 @@ import datetime
 import math
 import shutil
 from functools import cached_property
-from typing import Any
+from typing import Any, Literal
 
 import lancedb
 import lancedb.table
@@ -142,7 +142,7 @@ class LanceIndex:
     def search(
         self,
         text: str,
-        query_type: str = "hybrid",
+        query_type: Literal["vector", "fts", "hybrid"] = "hybrid",
         exclude_ids: list[str] | None = None,
         limit: int = 20,
     ) -> pa.Table:

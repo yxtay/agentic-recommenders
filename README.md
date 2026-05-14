@@ -11,15 +11,14 @@ for personalized recommendation. This project distills that into a single `pydan
 all reasoning stages within one LLM call, augmented with tool access for retrieval.
 
 The agent receives `text` (demographics/preferences) and `history` (past interactions, may be empty for
-cold-start users) and works in four stages:
+cold-start users) and works in three stages:
 
-1. **Item text lookup** — fetches the text of interacted items from LanceDB by ID
-2. **Context understanding** — LLM builds a preference summary from interaction history and item texts,
-    emphasising recent events
-3. **Candidate retrieval** — agent issues multiple hybrid-search queries (using recent item texts and/or
-    a generated hypothetical item description) for diversity; interacted items are excluded
-4. **Ranking with explanations** — LLM ranks candidates by relevance and diversity, attaching a
-    one-sentence explanation to each recommendation
+1. **Context understanding** — analyzes the text field and fetches interacted item texts from LanceDB
+    (if history exists) to build a preference summary
+2. **Candidate retrieval** — issues 2-4 search queries (vector, FTS, or hybrid) derived from the text
+    field, preference summary, and retrieved item texts; interacted items are excluded
+3. **Ranking** — deduplicates candidates, excludes previously interacted items, ranks by relevance
+    and diversity, and attaches a per-item explanation
 
 The system is served via a FastAPI REST endpoint.
 
@@ -71,11 +70,11 @@ uv run index --parquet_path data/ml-1m/users.parquet --table_name users
 ### 3. Configure the LLM
 
 ```bash
-export AGENTIC_REC_LLM_MODEL="cerebras:llama3.1-8b"   # any pydantic-ai model string
+export AGENTIC_REC_LLM_MODEL="cerebras:gpt-oss-120b"   # any pydantic-ai model string
 export CEREBRAS_API_KEY="..."
 ```
 
-Supported model strings: `cerebras:llama3.1-8b`, `anthropic:claude-haiku-4-5`, `ollama:llama3`, and any other
+Supported model strings: `cerebras:gpt-oss-120b`, `anthropic:claude-haiku-4-5`, `ollama:llama3`, and any other
 [pydantic-ai provider](https://ai.pydantic.dev/models/).
 
 ### 4. Serve

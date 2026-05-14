@@ -43,7 +43,6 @@ class RecommendationService:
         user = self.user_repository.get_by_id(user_id)
         if not user:
             return None
-        user.history = user.history[-20:]
         request = RecommendRequest(text=user.text, history=user.history, limit=limit)
         return await self.recommend(request)
 

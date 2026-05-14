@@ -21,7 +21,7 @@ class Settings(BaseSettings):
     reranker_type: str = "pylate"
 
     # llm
-    llm_model: str = "cerebras:llama3.1-8b"
+    llm_model: str = "cerebras:gpt-oss-120b"
 
     @property
     def items_parquet(self) -> str:

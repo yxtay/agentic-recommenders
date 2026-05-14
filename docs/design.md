@@ -74,7 +74,7 @@ Shared field types are defined as `Annotated` aliases: `ItemId`, `ItemText`, `Us
 
 ```python
 class Interaction(pydantic.BaseModel):
-    item_id: str
+    item_id: ItemId
     event_datetime: datetime
     event_name: str          # e.g. 'rating', 'click', 'purchase', 'watch'
     event_value: float

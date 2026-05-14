@@ -11,14 +11,14 @@ for personalized recommendation. This project distills that into a single `pydan
 all reasoning stages within one LLM call, augmented with tool access for retrieval.
 
 The agent receives `text` (demographics/preferences) and `history` (past interactions, may be empty for
-cold-start users) and works in four stages:
+cold-start users) and works in three stages:
 
-1. **Context understanding** — analyzes the input text for explicit preferences, then fetches
-    interacted item texts from LanceDB (if history exists) to build a preference summary
-2. **Candidate retrieval** — agent issues 2-4 search queries (vector, FTS, or hybrid) derived from
-    the text field, preference summary, and retrieved item texts; interacted items are excluded
-3. **Ranking with explanations** — LLM deduplicates candidates, excludes previously interacted items,
-    ranks by relevance and diversity, and returns each item's id and text as-is with a concise explanation
+1. **Context understanding** — analyzes the text field and fetches interacted item texts from LanceDB
+    (if history exists) to build a preference summary
+2. **Candidate retrieval** — issues 2-4 search queries (vector, FTS, or hybrid) derived from the text
+    field, preference summary, and retrieved item texts; interacted items are excluded
+3. **Ranking** — deduplicates candidates, excludes previously interacted items, ranks by relevance
+    and diversity, and attaches a per-item explanation
 
 The system is served via a FastAPI REST endpoint.
 

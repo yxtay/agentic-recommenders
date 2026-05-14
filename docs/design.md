@@ -49,31 +49,18 @@ differences from the paper:
 ```text
 Request (text, history: [{item_id, event_datetime, event_name, event_value}], limit)
     │
-    ├─ LLM: analyze text field for explicit preferences and item attributes
+    ├─ [Tool] get_item_texts(item_ids)              ← skipped if cold-start
+    │         Returns {item_id: item_text} from LanceDB.
     │
-    ├─ [Tool 1] get_item_texts(item_ids)    ← skipped if history is empty (cold-start)
-    │           Looks up item text in LanceDB by item_id.
-    │           Returns {item_id: item_text} for all interacted items.
+    ├─ LLM: context understanding
+    │         Builds preference summary from text + item texts + event values.
     │
-    ├─ LLM: context understanding (no tool call)
-    │           Combines text signals with retrieved item texts and event values
-    │           to build a preference summary, emphasizing recent and highly-rated.
+    ├─ [Tool] search_items(query, query_type, ...)   ← called 2-4 times
+    │         Vector/FTS/Hybrid search, interacted IDs excluded.
+    │         Queries derived from text, preference summary, item texts.
     │
-    ├─ [Tool 2] search_items(query, query_type, exclude_ids, limit)    ← called 2-4 times
-    │           Vector, FTS, or Hybrid search on LanceDB items table.
-    │           Interacted item_ids always excluded.
-    │           Queries derived from:
-    │             • text field directly (stated preferences)
-    │             • preference summary
-    │             • retrieved item texts (find similar items)
-    │           → list[ItemCandidate]
-    │
-    └─ LLM: deduplicate, exclude, rank + explain (no tool call)
-                Deduplicates candidates by ID (keep highest score).
-                Excludes previously interacted item IDs.
-                Ranks by relevance and diversity.
-                Returns id and text as-is; fills explanation only.
-                → RecommendResponse
+    └─ LLM: deduplicate, rank, explain
+              → RecommendResponse
 ```
 
 ---
@@ -196,9 +183,9 @@ class AgentDeps:
 
 ### Prompt structure
 
-- **`system_prompt`** (static): generic item recommendation workflow — text analysis, context
-  understanding from text and history, candidate retrieval using text/preference summary/item texts,
-  cold-start handling, deduplication, and ranking with explanations. Domain-agnostic.
+- **`system_prompt`** (static): domain-agnostic recommendation workflow — context understanding,
+  candidate retrieval, cold-start handling, deduplication, and ranking. Output schema field
+  descriptions (via `pydantic.Field`) guide the LLM on response format.
 - **`@agent.instructions`** (dynamic): serializes `ctx.deps.request` as JSON per-request.
 - **Runtime `instructions`** (per call site): domain-specific context passed at `agent.run(instructions=...)`.
 
@@ -206,10 +193,10 @@ class AgentDeps:
 
 Two instruction sets for different recommendation modes:
 
-- **`USER_INSTRUCTIONS`** — user-based: "items are films", "text contains user demographics",
-  "use history and text to understand taste".
-- **`ITEM_INSTRUCTIONS`** — item-based (similar items): "text contains the source movie",
-  "find diverse but related films", "no interaction history".
+- **`USER_INSTRUCTIONS`** — user-based: text contains user demographics and preferences,
+  use history and text to understand taste, vary queries for diversity.
+- **`ITEM_INSTRUCTIONS`** — item-based (similar items): text contains source item description,
+  find diverse but related items, no interaction history.
 
 ### Tools
 

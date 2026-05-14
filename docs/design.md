@@ -49,27 +49,30 @@ differences from the paper:
 ```text
 Request (text, history: [{item_id, event_datetime, event_name, event_value}], limit)
     │
+    ├─ LLM: analyze text field for explicit preferences and item attributes
+    │
     ├─ [Tool 1] get_item_texts(item_ids)    ← skipped if history is empty (cold-start)
     │           Looks up item text in LanceDB by item_id.
     │           Returns {item_id: item_text} for all interacted items.
     │
     ├─ LLM: context understanding (no tool call)
-    │           Using text, interaction details (timestamp, event_name,
-    │           event_value), and retrieved item texts, produces a
-    │           natural-language preference summary.
+    │           Combines text signals with retrieved item texts and event values
+    │           to build a preference summary, emphasizing recent and highly-rated.
     │
     ├─ [Tool 2] search_items(query, query_type, exclude_ids, limit)    ← called 2-4 times
     │           Vector, FTS, or Hybrid search on LanceDB items table.
     │           Interacted item_ids always excluded.
-    │           Agent issues multiple queries for diversity:
-    │             • item_text of a recent highly-rated interaction
-    │             • hypothetical item text generated from preference summary
-    │             • text-derived query (stated genre/style preferences)
-    │           → list[ItemCandidate] (deduplicated across calls)
+    │           Queries derived from:
+    │             • text field directly (stated preferences)
+    │             • preference summary
+    │             • retrieved item texts (find similar items)
+    │           → list[ItemCandidate]
     │
-    └─ LLM: rank + explain (no tool call)
-                Ranks deduplicated candidates by relevance and diversity.
-                Attaches a one-sentence explanation per item.
+    └─ LLM: deduplicate, exclude, rank + explain (no tool call)
+                Deduplicates candidates by ID (keep highest score).
+                Excludes previously interacted item IDs.
+                Ranks by relevance and diversity.
+                Returns id and text as-is; fills explanation only.
                 → RecommendResponse
 ```
 
@@ -187,14 +190,15 @@ Module-level `pydantic_ai.Agent[AgentDeps, RecommendResponse]` singleton configu
 ```python
 @dataclass
 class AgentDeps:
-    index: LanceIndex
+    item_repository: ItemRepository
     request: RecommendRequest
 ```
 
 ### Prompt structure
 
-- **`system_prompt`** (static): generic item recommendation workflow — context understanding,
-  candidate retrieval, cold-start handling, ranking with explanations. Domain-agnostic.
+- **`system_prompt`** (static): generic item recommendation workflow — text analysis, context
+  understanding from text and history, candidate retrieval using text/preference summary/item texts,
+  cold-start handling, deduplication, and ranking with explanations. Domain-agnostic.
 - **`@agent.instructions`** (dynamic): serializes `ctx.deps.request` as JSON per-request.
 - **Runtime `instructions`** (per call site): domain-specific context passed at `agent.run(instructions=...)`.
 
@@ -209,10 +213,13 @@ Two instruction sets for different recommendation modes:
 
 ### Tools
 
-| Tool             | Delegates to      | Purpose                                           |
-|------------------|-------------------|---------------------------------------------------|
-| `get_item_texts` | `index.get_ids()` | Fetch text of interacted items by ID list         |
-| `search_items`   | `index.search()`  | Vector, FTS, or Hybrid search with exclude filter |
+| Tool             | Delegates to                 | Purpose                                           |
+|------------------|------------------------------|---------------------------------------------------|
+| `get_item_texts` | `item_repository.get_by_ids` | Fetch text of interacted items by ID list         |
+| `search_items`   | `item_repository.search`     | Vector, FTS, or Hybrid search with exclude filter |
+
+Both tools use `strict=True` for OpenAI-compatible API compliance.
+`search_items` accepts `query_type: Literal["vector", "fts", "hybrid"]`.
 
 ### Cold-start handling
 
@@ -222,8 +229,8 @@ signal. This is the natural path for item-based recommendations (item text, no h
 ### Invocation
 
 ```python
-response = await agent.run(instructions=USER_INSTRUCTIONS, deps=AgentDeps(index, request))
-response = await agent.run(instructions=ITEM_INSTRUCTIONS, deps=AgentDeps(index, request))
+response = await agent.run(instructions=USER_INSTRUCTIONS, deps=AgentDeps(item_repository, request))
+response = await agent.run(instructions=ITEM_INSTRUCTIONS, deps=AgentDeps(item_repository, request))
 ```
 
 ---
@@ -287,8 +294,8 @@ Injected via FastAPI `Depends`:
 
 **`POST /recommend/item`** — invokes `agent.run(instructions=ITEM_INSTRUCTIONS, deps=...)`.
 
-**`POST /users/{user_id}/recommend`** — looks up user, truncates history to last 20 interactions,
-builds `RecommendRequest`, delegates to `/recommend`.
+**`POST /users/{user_id}/recommend`** — looks up user, builds `RecommendRequest` from user text
+and full history, delegates to `/recommend`.
 
 **`POST /items/{item_id}/recommend`** — looks up item text, builds `RecommendRequest(text=item_text,
 history=[], limit=limit)`, delegates to `/recommend/item`.
@@ -301,20 +308,20 @@ history=[], limit=limit)`, delegates to `/recommend/item`.
 
 `pydantic-settings` `Settings` class with `env_prefix="AGENTIC_REC_"`:
 
-| Setting            | Default                | Env var                        |
-|--------------------|------------------------|--------------------------------|
-| `llm_model`        | `cerebras:llama3.1-8b` | `AGENTIC_REC_LLM_MODEL`        |
-| `embedder_name`    | `lightonai/DenseOn`    | `AGENTIC_REC_EMBEDDER_NAME`    |
-| `reranker_name`    | `lightonai/LateOn`     | `AGENTIC_REC_RERANKER_NAME`    |
-| `reranker_type`    | `pylate`               | `AGENTIC_REC_RERANKER_TYPE`    |
-| `lance_db_path`    | `lance_db`             | `AGENTIC_REC_LANCE_DB_PATH`    |
-| `items_table_name` | `items`                | `AGENTIC_REC_ITEMS_TABLE_NAME` |
-| `data_dir`         | `data`                 | `AGENTIC_REC_DATA_DIR`         |
+| Setting            | Default                 | Env var                        |
+|--------------------|-------------------------|--------------------------------|
+| `llm_model`        | `cerebras:gpt-oss-120b` | `AGENTIC_REC_LLM_MODEL`        |
+| `embedder_name`    | `lightonai/DenseOn`     | `AGENTIC_REC_EMBEDDER_NAME`    |
+| `reranker_name`    | `lightonai/LateOn`      | `AGENTIC_REC_RERANKER_NAME`    |
+| `reranker_type`    | `pylate`                | `AGENTIC_REC_RERANKER_TYPE`    |
+| `lance_db_path`    | `lance_db`              | `AGENTIC_REC_LANCE_DB_PATH`    |
+| `items_table_name` | `items`                 | `AGENTIC_REC_ITEMS_TABLE_NAME` |
+| `data_dir`         | `data`                  | `AGENTIC_REC_DATA_DIR`         |
 
 Set the LLM model and its matching API key:
 
 ```bash
-export AGENTIC_REC_LLM_MODEL="cerebras:llama3.1-8b"
+export AGENTIC_REC_LLM_MODEL="cerebras:gpt-oss-120b"
 export CEREBRAS_API_KEY="..."
 ```
 

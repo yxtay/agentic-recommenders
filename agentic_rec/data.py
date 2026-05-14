@@ -10,26 +10,6 @@ from loguru import logger
 
 from agentic_rec.settings import settings
 
-
-def read_dat(
-    path: pathlib.Path,
-    dtype: dict[str, str],
-    encoding: str = "utf-8",
-) -> pl.DataFrame:
-    """Read a :: delimited .dat file as a Polars DataFrame."""
-    return pl.from_pandas(
-        pd.read_csv(
-            path,
-            sep="::",
-            header=None,
-            names=list(dtype.keys()),
-            dtype=dtype,
-            engine="python",
-            encoding=encoding,
-        )
-    )
-
-
 ###
 # download data
 ###
@@ -74,7 +54,7 @@ def download_data(
             resp.raise_for_status()
             for chunk in resp.iter_bytes():
                 f.write(chunk)
-        shutil.move(f.name, dest)
+            shutil.move(f.name, dest)
 
     logger.info("data downloaded: {}", dest)
     return dest
@@ -136,6 +116,24 @@ def download_unpack_data(
 ###
 # load data
 ###
+
+
+def read_dat(
+    path: pathlib.Path,
+    dtype: dict[str, str],
+    encoding: str = "utf-8",
+) -> pl.DataFrame:
+    """Read a :: delimited .dat file as a Polars DataFrame."""
+    df = pd.read_csv(
+        path,
+        sep="::",
+        header=None,
+        names=list(dtype.keys()),
+        dtype=dtype,
+        engine="python",
+        encoding=encoding,
+    )
+    return pl.from_pandas(df)
 
 
 def load_items(src_dir: str = settings.data_dir) -> pl.LazyFrame:
@@ -294,9 +292,7 @@ def train_test_split(
         .with_columns(is_val=pl.col("p") >= 1 - val_prop)
         .drop("len", "p")
     )
-    return events.join(
-        users_split, on=group_col, how="left", validate="m:1"
-    ).with_columns(
+    return events.join(users_split, on=group_col, validate="m:1").with_columns(
         is_val=~pl.col("is_train") & pl.col("is_val"),
         is_test=~pl.col("is_train") & ~pl.col("is_val"),
         is_predict=True,
@@ -345,7 +341,6 @@ def process_events(
                 lambda col: "item_" + col if not col.startswith("item_") else col
             ),
             on="item_id",
-            how="left",
             validate="m:1",
         )
         .join(
@@ -353,7 +348,6 @@ def process_events(
                 lambda col: "user_" + col if not col.startswith("user_") else col
             ),
             on="user_id",
-            how="left",
             validate="m:1",
         )
         .collect()

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 import pydantic
 import pydantic_ai
@@ -33,26 +33,30 @@ event_name, event_value
 Workflow:
 
 1. Context understanding:
+    Start by analyzing the text field for explicit preferences, or item attributes.
     If history is not empty, call get_item_texts with all interacted item IDs.
-    Analyze retrieved texts with event values to build a preference summary,
-    emphasizing recent and highly-rated interactions.
+    Combine text signals with retrieved item texts and event values
+    to build a preference summary, emphasizing recent and highly-rated interactions.
 
 2. Candidate retrieval: call search_items 2-4 times with diverse queries.
     - Use `query_type='fts'` for specific terms, names, or categories mentioned in the context.
     - Use `query_type='vector'` for broad themes, "vibes", or similarity to the user's taste profile.
     - Use `query_type='hybrid'` (default) for a balanced approach when you have both specific terms and general themes.
-    - Derive queries from the context and taste profile.
+    - Derive queries from the text field, the preference summary, and retrieved item texts.
     - Use the text field directly as one query if it contains useful preference signals.
+    - Use retrieved item texts (from get_item_texts) as queries to find similar items.
     - Exclude already-interacted item IDs from all search calls.
     - Aim for diversity: vary query angles and search methods.
 
 3. Cold-start: if history is empty, skip get_item_texts and rely solely on text.
 
 4. Ranking with explanations: from all candidates, select the limit items.
-    Rank by relevance and diversity.
-    For each item, provide a concise explanation of why it is recommended,
-    such as due to stated or inferred preferences, or recent activity.
-    Use short explanations such as "Because you...", etc.
+    - Deduplicate candidates by item ID, keeping the highest-scoring occurrence.
+    - Exclude any item IDs that appear in the interaction history.
+    - Rank by relevance and diversity.
+    - Return each item's id and text exactly as retrieved from search results.
+    - Only fill in the explanation field with a concise reason for the recommendation,
+        such as "Because you..." based on stated or inferred preferences, or recent activity.
 
 Return a RecommendResponse with the ranked list of items.
 """
@@ -87,7 +91,7 @@ def user_context(ctx: RunContext[AgentDeps]) -> str:
     return ctx.deps.request.model_dump_json()
 
 
-@agent.tool
+@agent.tool(strict=True)
 def get_item_texts(
     ctx: RunContext[AgentDeps],
     item_ids: list[str],
@@ -106,11 +110,11 @@ def get_item_texts(
 _item_candidate_adapter = pydantic.TypeAdapter(list[ItemCandidate])
 
 
-@agent.tool
+@agent.tool(strict=True)
 def search_items(
     ctx: RunContext[AgentDeps],
     query: str,
-    query_type: str = "hybrid",
+    query_type: Literal["vector", "fts", "hybrid"] = "hybrid",
     exclude_ids: list[str] | None = None,
     limit: int = 20,
 ) -> list[ItemCandidate]:
@@ -164,7 +168,6 @@ def main(limit: int = 5) -> None:
     sample_idx = random.randrange(users_table.num_rows)
     sample_user = users_table.slice(sample_idx, 1).to_pylist()[0]
     request = RecommendRequest.model_validate({**sample_user, "limit": limit})
-    request.history = request.history[-20:]
     rich.print(request)
 
     deps = AgentDeps(item_repository=item_repository, request=request)

@@ -13,7 +13,7 @@ UserId = Annotated[str, pydantic.Field(description="Unique user identifier.")]
 
 
 class Interaction(pydantic.BaseModel):
-    item_id: str = pydantic.Field(description="ID of the interacted item.")
+    item_id: ItemId
     event_datetime: datetime = pydantic.Field(
         description="When the interaction occurred."
     )

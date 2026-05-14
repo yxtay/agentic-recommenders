@@ -10,9 +10,9 @@
 
 A simplified single-agent implementation inspired by the ARAG framework, applied to MovieLens 1M.
 A single `pydantic-ai` `Agent` orchestrates recommendation via two tools: item text lookup (by ID)
-and candidate retrieval (hybrid search). The agent derives a preference summary from the user's
-interaction history, issues multiple targeted retrieval queries for diversity, then ranks candidates
-with per-item explanations. Served via FastAPI.
+and candidate retrieval (hybrid search). The agent analyzes the input text and interaction history
+to build a preference summary, issues diverse retrieval queries, then deduplicates, ranks, and
+explains recommendations. Served via FastAPI.
 
 ### Relationship to the paper
 
@@ -69,41 +69,48 @@ Request (text, history: [{item_id, event_datetime, event_name, event_value}], li
 
 Defined in `agentic_rec/models.py`:
 
+All models use `pydantic.Field(description=...)` for OpenAPI documentation.
+Shared field types are defined as `Annotated` aliases: `ItemId`, `ItemText`, `UserId`, `InteractionHistory`.
+
 ```python
 class Interaction(pydantic.BaseModel):
     item_id: str
     event_datetime: datetime
-    event_name: str
+    event_name: str          # e.g. 'rating', 'click', 'purchase', 'watch'
     event_value: float
 
 class ItemCandidate(pydantic.BaseModel):
-    id: str
-    text: str
+    id: ItemId
+    text: ItemText
     score: float = 0.0
 
 class ItemRecommended(pydantic.BaseModel):
-    id: str
-    text: str
+    id: ItemId
+    text: ItemText
     explanation: str
 
 class RecommendRequest(pydantic.BaseModel):
-    text: str                       # user demographics / preferences, or item description
-    history: list[Interaction] = [] # past interactions; empty for cold-start
+    text: str                         # user profile or item description
+    history: InteractionHistory       # default []; empty for cold-start
     limit: int = 10
 
 class RecommendResponse(pydantic.BaseModel):
     items: list[ItemRecommended]
 
 class UserResponse(pydantic.BaseModel):
-    id: str
+    id: UserId
     text: str
-    history: list[Interaction] = []
+    history: InteractionHistory
 
 class ItemResponse(pydantic.BaseModel):
-    id: str
-    text: str
+    id: ItemId
+    text: ItemText
 
-class InfoResponse(pydantic.BaseModel):
+class HealthResponse(pydantic.BaseModel):
+    status: str
+    num_items: int
+    num_users: int
+    llm_ready: bool
     embedder_name: str
     reranker_name: str
     llm_model: str
@@ -270,10 +277,10 @@ Resources loaded once via FastAPI lifespan context manager:
 
 ### Dependencies
 
-Injected via FastAPI `Depends`:
+Injected via FastAPI `Depends` (defined in `agentic_rec/dependencies.py`):
 
-- `ItemsIndexDep` — items `LanceIndex` from app state
-- `UsersIndexDep` — users `LanceIndex` from app state
+- `ItemRepoDep`, `UserRepoDep` — repository-level dependencies from app state
+- `ItemServiceDep`, `UserServiceDep`, `RecServiceDep` — service-level dependencies
 
 ### Data flow
 

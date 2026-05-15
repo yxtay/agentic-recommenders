@@ -144,7 +144,7 @@ class LanceIndex:
         text: str,
         query_type: Literal["vector", "fts", "hybrid"] = "hybrid",
         exclude_ids: list[str] | None = None,
-        limit: int = 20,
+        limit: int = 10,
     ) -> pa.Table:
         """Search with reranking, returning scored results.
 

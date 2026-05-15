@@ -57,7 +57,7 @@ jobs:
       - run: uv run index
 
       - if: ${{ failure() }}
-        run: uv run data
+        run: uv run ml_1m
 
   docker:
     permissions:
@@ -117,7 +117,7 @@ jobs:
           IMAGE_ID: ${{ steps.build.outputs.imageid }}
 
       - if: ${{ failure() }}
-        run: ${DOCKER_RUN_CMD} "${IMAGE_ID}" uv run data
+        run: ${DOCKER_RUN_CMD} "${IMAGE_ID}" uv run ml_1m
         env:
           IMAGE_ID: ${{ steps.build.outputs.imageid }}
 

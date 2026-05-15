@@ -98,7 +98,7 @@ jobs:
         env:
           IMAGE_ID: ${{ steps.build.outputs.imageid }}
 
-      - run: chmod -R 777 /tmp/cache
+      - run: sudo chmod -R 777 /tmp/cache
 
       - run: ${DOCKER_RUN_CMD} --env "CEREBRAS_API_KEY=${CEREBRAS_API_KEY}" "${IMAGE_ID}" uv run app
         id: run-app

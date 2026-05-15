@@ -78,6 +78,8 @@ async def cached_recommendation(
         cache_key = generate_cache_key(
             request.url.path, params=cache_key_params, body=cache_key_body
         )
-        request.app.state.response_cache.set(cache_key, response.model_dump(), cache_ttl)
+        request.app.state.response_cache.set(
+            cache_key, response.model_dump(), cache_ttl
+        )
 
     return response

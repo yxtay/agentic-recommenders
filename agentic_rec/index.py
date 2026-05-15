@@ -144,7 +144,7 @@ class LanceIndex:
         text: str,
         query_type: Literal["vector", "fts", "hybrid"] = "hybrid",
         exclude_ids: list[str] | None = None,
-        limit: int = 20,
+        limit: int = 10,
     ) -> pa.Table:
         """Search with reranking, returning scored results.
 
@@ -193,9 +193,9 @@ def main(
     import pyarrow.parquet as pq
     import rich
 
-    import agentic_rec.data
+    import agentic_rec.ml_1m
 
-    agentic_rec.data.main(overwrite=False)
+    agentic_rec.ml_1m.main(overwrite=False)
 
     config = LanceIndexConfig(lancedb_path=lancedb_path, table_name=table_name)
     index = LanceIndex(config)

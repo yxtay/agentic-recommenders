@@ -93,7 +93,7 @@ def search_items(
     query: str,
     query_type: Literal["vector", "fts", "hybrid"] = "hybrid",
     exclude_ids: list[str] | None = None,
-    limit: int = 20,
+    limit: int = 10,
 ) -> list[ItemCandidate]:
     """Search for candidate items using vector, full-text, or hybrid search.
 

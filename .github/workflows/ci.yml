@@ -69,7 +69,6 @@ jobs:
       GHCR_IMAGE_NAME: ghcr.io/${{ github.repository }}
       DOCKER_RUN_CMD: >-
         docker run
-          --env "CEREBRAS_API_KEY=${CEREBRAS_API_KEY}"
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
@@ -89,7 +88,7 @@ jobs:
         env:
           IMAGE_ID: ${{ steps.build.outputs.imageid }}
 
-      - run: ${DOCKER_RUN_CMD} "${IMAGE_ID}" uv run app
+      - run: ${DOCKER_RUN_CMD} --env "CEREBRAS_API_KEY=${CEREBRAS_API_KEY}" "${IMAGE_ID}" uv run app
         id: run-app
         continue-on-error: true
         env:
@@ -97,7 +96,7 @@ jobs:
           CEREBRAS_API_KEY: ${{ secrets.CEREBRAS_API_KEY }}
 
       - if: ${{ steps.run-app.outcome == 'failure' }}
-        run: ${DOCKER_RUN_CMD} "${IMAGE_ID}" uv run agent
+        run: ${DOCKER_RUN_CMD} --env "CEREBRAS_API_KEY=${CEREBRAS_API_KEY}" "${IMAGE_ID}" uv run app
         id: run-agent
         continue-on-error: true
         env:

@@ -84,7 +84,7 @@ jobs:
           path: /tmp/cache
           key: docker-${{ runner.os }}
 
-      - run: mkdir -p /tmp/cache/{huggingface,data,lance_db} && chmod -R 777 /tmp/cache
+      - run: mkdir -p /tmp/cache && chmod -R 777 /tmp/cache
 
       - uses: docker/setup-qemu-action@ce360397dd3f832beb865e1373c09c0e9f86d70a # v4
 

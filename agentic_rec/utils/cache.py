@@ -28,7 +28,9 @@ class ResponseCache:
 
 
 def generate_cache_key(
-    namespace: str, *args: Any, **kwargs: Any  # noqa: ANN401
+    namespace: str,
+    *args: Any,
+    **kwargs: Any,  # noqa: ANN401
 ) -> str:
     """Generate a unique cache key based on namespace and arguments."""
     key_parts = [namespace]

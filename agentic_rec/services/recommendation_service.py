@@ -72,7 +72,9 @@ class RecommendationService:
         """Look up user and generate recommendations."""
         cache_key = None
         if self.cache and cache_ttl is not None:
-            cache_key = generate_cache_key("recommend_for_user", user_id=user_id, limit=limit)
+            cache_key = generate_cache_key(
+                "recommend_for_user", user_id=user_id, limit=limit
+            )
             if cached := self.cache.get(cache_key):
                 logger.info("Cache hit: recommend_for_user")
                 return RecommendResponse.model_validate(cached)
@@ -94,7 +96,9 @@ class RecommendationService:
         """Look up item and generate similar-item recommendations."""
         cache_key = None
         if self.cache and cache_ttl is not None:
-            cache_key = generate_cache_key("recommend_for_item", item_id=item_id, limit=limit)
+            cache_key = generate_cache_key(
+                "recommend_for_item", item_id=item_id, limit=limit
+            )
             if cached := self.cache.get(cache_key):
                 logger.info("Cache hit: recommend_for_item")
                 return RecommendResponse.model_validate(cached)

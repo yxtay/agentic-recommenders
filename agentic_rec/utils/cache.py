@@ -28,20 +28,20 @@ class ResponseCache:
 
 
 def generate_cache_key(
-    path: str, params: dict[str, Any] | None = None, body: Any | None = None
+    namespace: str, *args: Any, **kwargs: Any  # noqa: ANN401
 ) -> str:
-    """Generate a unique cache key based on path, query params, and body."""
-    key_parts = [path]
+    """Generate a unique cache key based on namespace and arguments."""
+    key_parts = [namespace]
 
-    if params:
-        sorted_params = sorted(params.items())
-        key_parts.append(json.dumps(sorted_params))
-
-    if body:
-        if hasattr(body, "model_dump_json"):
-            key_parts.append(body.model_dump_json())
+    for arg in args:
+        if hasattr(arg, "model_dump_json"):
+            key_parts.append(arg.model_dump_json())
         else:
-            key_parts.append(json.dumps(body, sort_keys=True))
+            key_parts.append(json.dumps(arg, sort_keys=True))
+
+    if kwargs:
+        sorted_kwargs = sorted(kwargs.items())
+        key_parts.append(json.dumps(sorted_kwargs, default=str))
 
     key_string = ":".join(key_parts)
     return hashlib.sha256(key_string.encode()).hexdigest()

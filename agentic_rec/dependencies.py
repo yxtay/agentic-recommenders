@@ -32,9 +32,11 @@ def get_user_service(repo: UserRepoDep) -> UserService:
 
 
 def get_recommendation_service(
-    item_repo: ItemRepoDep, user_repo: UserRepoDep
+    request: Request, item_repo: ItemRepoDep, user_repo: UserRepoDep
 ) -> RecommendationService:
-    return RecommendationService(item_repo, user_repo)
+    return RecommendationService(
+        item_repo, user_repo, cache=request.app.state.response_cache
+    )
 
 
 ItemServiceDep = Annotated[ItemService, Depends(get_item_service)]

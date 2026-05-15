@@ -48,7 +48,7 @@ jobs:
             data
             lance_db
             ${{ env.HF_HOME }}
-          key: cache-${{ runner.os }}
+          key: python-${{ runner.os }}
 
       - run: uv sync && uv pip list
 
@@ -67,10 +67,14 @@ jobs:
     runs-on: ubuntu-latest
     env:
       GHCR_IMAGE_NAME: ghcr.io/${{ github.repository }}
+      DATA_DIR: /tmp/data
+      LANCE_DB_PATH: /tmp/lance_db
       DOCKER_RUN_CMD: >-
         docker run
           --env "HF_HOME=${HF_HOME}"
           --volume /tmp/huggingface:/tmp/huggingface
+          --volume /tmp/data:/work/app/data
+          --volume /tmp/lance_db:/work/app/lance_db
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
@@ -79,8 +83,11 @@ jobs:
       - if: ${{ github.ref_name != github.event.repository.default_branch }}
         uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
         with:
-          path: ${{ env.HF_HOME }}
-          key: huggingface-${{ runner.os }}
+          path: |
+            ${{ env.HF_HOME }}
+            ${{ env.DATA_DIR }}
+            ${{ env.LANCE_DB_PATH }}
+          key: docker-${{ runner.os }}
 
       - uses: docker/setup-qemu-action@ce360397dd3f832beb865e1373c09c0e9f86d70a # v4
 

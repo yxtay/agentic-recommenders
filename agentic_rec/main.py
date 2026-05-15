@@ -24,7 +24,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         LanceIndexConfig(table_name=settings.users_table_name)
     )
     app.state.llm_ready = await check_llm()
-    app.state.response_cache = ResponseCache()
+    app.state.response_cache = ResponseCache(maxsize=settings.cache_maxsize)
     logger.info(
         "app ready: {} items, {} users, llm_ready={}",
         app.state.items_index.table.count_rows(),

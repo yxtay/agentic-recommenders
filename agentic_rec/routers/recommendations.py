@@ -7,6 +7,9 @@ from loguru import logger
 
 from agentic_rec.dependencies import RecServiceDep  # noqa: TC001
 from agentic_rec.models import RecommendRequest, RecommendResponse  # noqa: TC001
+from agentic_rec.settings import settings
+
+CacheTTL = Annotated[int, Header()]
 
 router = APIRouter()
 
@@ -17,7 +20,7 @@ router = APIRouter()
 async def recommend(
     request: RecommendRequest,
     rec_service: RecServiceDep,
-    x_cache_ttl: Annotated[int | None, Header()] = None,
+    x_cache_ttl: CacheTTL = settings.cache_ttl,
 ) -> RecommendResponse:
     """Generate user-based recommendations via the ARAG agent."""
     return await rec_service.recommend(request, cache_ttl=x_cache_ttl)
@@ -28,7 +31,7 @@ async def recommend(
 async def recommend_item(
     request: RecommendRequest,
     rec_service: RecServiceDep,
-    x_cache_ttl: Annotated[int | None, Header()] = None,
+    x_cache_ttl: CacheTTL = settings.cache_ttl,
 ) -> RecommendResponse:
     """Generate item-based (similar items) recommendations via the ARAG agent."""
     return await rec_service.recommend_item(request, cache_ttl=x_cache_ttl)
@@ -39,7 +42,7 @@ async def recommend_user_id(
     user_id: str,
     rec_service: RecServiceDep,
     limit: int = 10,
-    x_cache_ttl: Annotated[int | None, Header()] = None,
+    x_cache_ttl: CacheTTL = settings.cache_ttl,
 ) -> RecommendResponse:
     """Look up a user by ID and generate recommendations."""
     response = await rec_service.recommend_for_user(
@@ -55,7 +58,7 @@ async def recommend_item_id(
     item_id: str,
     rec_service: RecServiceDep,
     limit: int = 10,
-    x_cache_ttl: Annotated[int | None, Header()] = None,
+    x_cache_ttl: CacheTTL = settings.cache_ttl,
 ) -> RecommendResponse:
     """Look up an item by ID and generate similar-item recommendations."""
     response = await rec_service.recommend_for_item(

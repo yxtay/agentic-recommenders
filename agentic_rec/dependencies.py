@@ -4,11 +4,11 @@ from typing import Annotated
 
 from fastapi import Depends, Request
 
-from agentic_rec.repositories.item_repository import ItemRepository
-from agentic_rec.repositories.user_repository import UserRepository
-from agentic_rec.services.item_service import ItemService
-from agentic_rec.services.recommendation_service import RecommendationService
-from agentic_rec.services.user_service import UserService
+from .repositories.item_repository import ItemRepository
+from .repositories.user_repository import UserRepository
+from .services.item_service import ItemService
+from .services.recommendation_service import RecommendationService
+from .services.user_service import UserService
 
 
 def get_item_repository(request: Request) -> ItemRepository:

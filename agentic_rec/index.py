@@ -13,7 +13,7 @@ import pydantic
 from loguru import logger
 from sqlalchemy import column, literal
 
-from agentic_rec.settings import settings
+from .settings import settings
 
 
 class LanceIndexConfig(pydantic.BaseModel):

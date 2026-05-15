@@ -103,7 +103,7 @@ curl -X POST http://localhost:3000/recommend \
 | File                          | Responsibility                                                      |
 |-------------------------------|---------------------------------------------------------------------|
 | `agentic_rec/settings.py`     | pydantic-settings `Settings` class: paths, model names, table names |
-| `agentic_rec/data.py`         | MovieLens download, Parquet conversion, train/val/test split        |
+| `agentic_rec/ml_1m.py`        | MovieLens download, Parquet conversion, train/val/test split        |
 | `agentic_rec/index.py`        | LanceDB index: embedding, hybrid search, reranking (items & users)  |
 | `agentic_rec/models.py`       | Pydantic models: request/response types                             |
 | `agentic_rec/agent.py`        | pydantic-ai `Agent` singleton with tools                            |

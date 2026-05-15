@@ -53,7 +53,7 @@ uv sync
 Downloads, extracts, and converts MovieLens 1M into Parquet files under `data/`:
 
 ```bash
-uv run data
+uv run ml_1m
 ```
 
 If you already have `ml-1m.zip`, place it under `data/` before running the command.

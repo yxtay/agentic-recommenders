@@ -23,7 +23,7 @@ a documentation update). Do not batch unrelated changes into a single commit.
 uv sync
 
 # data preparation (downloads MovieLens 1M, converts to Parquet)
-uv run data
+uv run ml_1m
 
 # build LanceDB index for items (default) or users
 uv run index

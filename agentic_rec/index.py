@@ -193,9 +193,9 @@ def main(
     import pyarrow.parquet as pq
     import rich
 
-    import agentic_rec.ml_1m
+    from . import ml_1m
 
-    agentic_rec.ml_1m.main(overwrite=False)
+    ml_1m.main(overwrite=False)
 
     config = LanceIndexConfig(lancedb_path=lancedb_path, table_name=table_name)
     index = LanceIndex(config)

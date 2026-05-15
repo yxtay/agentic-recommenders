@@ -34,7 +34,7 @@ dev = [
 ]
 
 [project.scripts]
-data = "agentic_rec.ml_1m:cli"
+ml_1m = "agentic_rec.ml_1m:cli"
 index = "agentic_rec.index:cli"
 agent = "agentic_rec.agent:cli"
 app = "agentic_rec.main:cli"

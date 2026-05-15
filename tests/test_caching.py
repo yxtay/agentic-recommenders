@@ -73,18 +73,19 @@ def test_cache_expiration(mock_agent_run: AsyncMock) -> None:
         assert mock_agent_run.call_count == 2
 
 
-def test_no_cache_header(mock_agent_run: AsyncMock) -> None:
+def test_default_cache_ttl(mock_agent_run: AsyncMock) -> None:
     mock_agent_run.return_value.output = RecommendResponse(items=[])
 
     with TestClient(app) as client:
         request_data = {"text": "sci-fi movies", "history": [], "limit": 5}
 
-        # Request without TTL header
+        # Request without TTL header - should use default 1h TTL
         client.post("/recommend", json=request_data)
-        client.post("/recommend", json=request_data)
+        assert mock_agent_run.call_count == 1
 
-        # Should call agent every time
-        assert mock_agent_run.call_count == 2
+        # Second request - should be a cache hit even without header
+        client.post("/recommend", json=request_data)
+        assert mock_agent_run.call_count == 1
 
 
 def test_different_keys(mock_agent_run: AsyncMock) -> None:

@@ -13,6 +13,8 @@ if TYPE_CHECKING:
     from agentic_rec.repositories.user_repository import UserRepository
     from agentic_rec.utils.cache import ResponseCache
 
+DEFAULT_CACHE_TTL = 3600  # 1 hour
+
 
 class RecommendationService:
     def __init__(
@@ -30,8 +32,9 @@ class RecommendationService:
         self, request: RecommendRequest, cache_ttl: int | None = None
     ) -> RecommendResponse:
         """Generate user-based recommendations."""
+        ttl = cache_ttl if cache_ttl is not None else DEFAULT_CACHE_TTL
         cache_key = None
-        if self.cache and cache_ttl is not None:
+        if self.cache:
             cache_key = generate_cache_key("recommend", request)
             if cached := self.cache.get(cache_key):
                 logger.info("Cache hit: recommend")
@@ -41,8 +44,8 @@ class RecommendationService:
         response = await self.rec_agent.run(instructions=USER_INSTRUCTIONS, deps=deps)
         logger.info("recommend: {} items", len(response.output.items))
 
-        if self.cache and cache_ttl is not None and cache_key:
-            self.cache.set(cache_key, response.output.model_dump(), cache_ttl)
+        if self.cache and cache_key:
+            self.cache.set(cache_key, response.output.model_dump(), ttl)
 
         return response.output
 
@@ -50,8 +53,9 @@ class RecommendationService:
         self, request: RecommendRequest, cache_ttl: int | None = None
     ) -> RecommendResponse:
         """Generate item-based recommendations."""
+        ttl = cache_ttl if cache_ttl is not None else DEFAULT_CACHE_TTL
         cache_key = None
-        if self.cache and cache_ttl is not None:
+        if self.cache:
             cache_key = generate_cache_key("recommend_item", request)
             if cached := self.cache.get(cache_key):
                 logger.info("Cache hit: recommend_item")
@@ -61,8 +65,8 @@ class RecommendationService:
         response = await self.rec_agent.run(instructions=ITEM_INSTRUCTIONS, deps=deps)
         logger.info("recommend_item: {} items", len(response.output.items))
 
-        if self.cache and cache_ttl is not None and cache_key:
-            self.cache.set(cache_key, response.output.model_dump(), cache_ttl)
+        if self.cache and cache_key:
+            self.cache.set(cache_key, response.output.model_dump(), ttl)
 
         return response.output
 
@@ -70,8 +74,9 @@ class RecommendationService:
         self, user_id: str, limit: int = 10, cache_ttl: int | None = None
     ) -> RecommendResponse | None:
         """Look up user and generate recommendations."""
+        ttl = cache_ttl if cache_ttl is not None else DEFAULT_CACHE_TTL
         cache_key = None
-        if self.cache and cache_ttl is not None:
+        if self.cache:
             cache_key = generate_cache_key(
                 "recommend_for_user", user_id=user_id, limit=limit
             )
@@ -83,10 +88,10 @@ class RecommendationService:
         if not user:
             return None
         request = RecommendRequest(text=user.text, history=user.history, limit=limit)
-        response = await self.recommend(request)
+        response = await self.recommend(request, cache_ttl=cache_ttl)
 
-        if self.cache and cache_ttl is not None and cache_key:
-            self.cache.set(cache_key, response.model_dump(), cache_ttl)
+        if self.cache and cache_key:
+            self.cache.set(cache_key, response.model_dump(), ttl)
 
         return response
 
@@ -94,8 +99,9 @@ class RecommendationService:
         self, item_id: str, limit: int = 10, cache_ttl: int | None = None
     ) -> RecommendResponse | None:
         """Look up item and generate similar-item recommendations."""
+        ttl = cache_ttl if cache_ttl is not None else DEFAULT_CACHE_TTL
         cache_key = None
-        if self.cache and cache_ttl is not None:
+        if self.cache:
             cache_key = generate_cache_key(
                 "recommend_for_item", item_id=item_id, limit=limit
             )
@@ -107,9 +113,9 @@ class RecommendationService:
         if not item:
             return None
         request = RecommendRequest(text=item.text, limit=limit)
-        response = await self.recommend_item(request)
+        response = await self.recommend_item(request, cache_ttl=cache_ttl)
 
-        if self.cache and cache_ttl is not None and cache_key:
-            self.cache.set(cache_key, response.model_dump(), cache_ttl)
+        if self.cache and cache_key:
+            self.cache.set(cache_key, response.model_dump(), ttl)
 
         return response

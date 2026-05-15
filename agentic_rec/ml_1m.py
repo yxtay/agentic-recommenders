@@ -8,7 +8,7 @@ import pandas as pd
 import polars as pl
 from loguru import logger
 
-from .settings import settings
+from agentic_rec.settings import settings
 
 ###
 # download data

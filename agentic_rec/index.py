@@ -13,7 +13,7 @@ import pydantic
 from loguru import logger
 from sqlalchemy import column, literal
 
-from .settings import settings
+from agentic_rec.settings import settings
 
 
 class LanceIndexConfig(pydantic.BaseModel):
@@ -193,9 +193,9 @@ def main(
     import pyarrow.parquet as pq
     import rich
 
-    from . import ml_1m
+    import agentic_rec.ml_1m
 
-    ml_1m.main(overwrite=False)
+    agentic_rec.ml_1m.main(overwrite=False)
 
     config = LanceIndexConfig(lancedb_path=lancedb_path, table_name=table_name)
     index = LanceIndex(config)

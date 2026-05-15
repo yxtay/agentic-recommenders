@@ -8,11 +8,11 @@ import pydantic_ai
 from loguru import logger
 from pydantic_ai import RunContext
 
-from .models import ItemCandidate, RecommendRequest, RecommendResponse
-from .settings import settings
+from agentic_rec.models import ItemCandidate, RecommendRequest, RecommendResponse
+from agentic_rec.settings import settings
 
 if TYPE_CHECKING:
-    from .repositories.item_repository import ItemRepository
+    from agentic_rec.repositories.item_repository import ItemRepository
 
 
 @dataclass
@@ -130,11 +130,11 @@ def main(limit: int = 5) -> None:
     import pyarrow.parquet as pq
     import rich
 
-    from . import index
-    from .index import LanceIndex, LanceIndexConfig
-    from .repositories.item_repository import ItemRepository
+    import agentic_rec.index
+    from agentic_rec.index import LanceIndex, LanceIndexConfig
+    from agentic_rec.repositories.item_repository import ItemRepository
 
-    index.main(overwrite=False)
+    agentic_rec.index.main(overwrite=False)
     index = LanceIndex(LanceIndexConfig())
     index.open_table()
     item_repository = ItemRepository(index)

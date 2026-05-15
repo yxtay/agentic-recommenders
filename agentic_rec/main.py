@@ -10,6 +10,7 @@ from agentic_rec.agent import check_llm
 from agentic_rec.index import LanceIndex, LanceIndexConfig
 from agentic_rec.routers import health, items, recommendations, users
 from agentic_rec.settings import settings
+from agentic_rec.utils.cache import ResponseCache
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
@@ -23,6 +24,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         LanceIndexConfig(table_name=settings.users_table_name)
     )
     app.state.llm_ready = await check_llm()
+    app.state.response_cache = ResponseCache()
     logger.info(
         "app ready: {} items, {} users, llm_ready={}",
         app.state.items_index.table.count_rows(),

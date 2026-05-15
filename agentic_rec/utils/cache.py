@@ -3,9 +3,19 @@ from __future__ import annotations
 import hashlib
 import json
 import time
-from typing import Any
+from typing import TYPE_CHECKING, Any, TypeVar
 
 from cachetools import TLRUCache
+from loguru import logger
+
+from agentic_rec.models import RecommendResponse
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from fastapi import Request
+
+T = TypeVar("T")
 
 
 class ResponseCache:
@@ -44,3 +54,30 @@ def generate_cache_key(
 
     key_string = ":".join(key_parts)
     return hashlib.sha256(key_string.encode()).hexdigest()
+
+
+async def cached_recommendation(
+    request: Request,
+    cache_ttl: int | None,
+    service_func: Callable[[], RecommendResponse],
+    cache_key_params: dict[str, Any] | None = None,
+    cache_key_body: Any | None = None,  # noqa: ANN401
+) -> RecommendResponse:
+    """Helper to handle caching logic for recommendation endpoints."""
+    if cache_ttl is not None:
+        cache_key = generate_cache_key(
+            request.url.path, params=cache_key_params, body=cache_key_body
+        )
+        if cached := request.app.state.response_cache.get(cache_key):
+            logger.info("Cache hit for {}", request.url.path)
+            return RecommendResponse.model_validate(cached)
+
+    response = await service_func()
+
+    if cache_ttl is not None:
+        cache_key = generate_cache_key(
+            request.url.path, params=cache_key_params, body=cache_key_body
+        )
+        request.app.state.response_cache.set(cache_key, response.model_dump(), cache_ttl)
+
+    return response

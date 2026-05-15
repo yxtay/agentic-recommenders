@@ -6,8 +6,8 @@ from fastapi import APIRouter, Header, HTTPException, Request
 from loguru import logger
 
 from agentic_rec.dependencies import RecServiceDep  # noqa: TC001
-from agentic_rec.models import RecommendRequest, RecommendResponse
-from agentic_rec.utils.cache import generate_cache_key
+from agentic_rec.models import RecommendRequest, RecommendResponse  # noqa: TC001
+from agentic_rec.utils.cache import cached_recommendation
 
 router = APIRouter()
 
@@ -22,21 +22,12 @@ async def recommend(
     x_cache_ttl: Annotated[int | None, Header()] = None,
 ) -> RecommendResponse:
     """Generate user-based recommendations via the ARAG agent."""
-    if x_cache_ttl is not None:
-        cache_key = generate_cache_key(fastapi_request.url.path, body=request)
-        if cached := fastapi_request.app.state.response_cache.get(cache_key):
-            logger.info("Cache hit for {}", fastapi_request.url.path)
-            return RecommendResponse.model_validate(cached)
-
-    response = await rec_service.recommend(request)
-
-    if x_cache_ttl is not None:
-        cache_key = generate_cache_key(fastapi_request.url.path, body=request)
-        fastapi_request.app.state.response_cache.set(
-            cache_key, response.model_dump(), x_cache_ttl
-        )
-
-    return response
+    return await cached_recommendation(
+        fastapi_request,
+        x_cache_ttl,
+        lambda: rec_service.recommend(request),
+        cache_key_body=request,
+    )
 
 
 @router.post("/recommend/item")
@@ -48,21 +39,12 @@ async def recommend_item(
     x_cache_ttl: Annotated[int | None, Header()] = None,
 ) -> RecommendResponse:
     """Generate item-based (similar items) recommendations via the ARAG agent."""
-    if x_cache_ttl is not None:
-        cache_key = generate_cache_key(fastapi_request.url.path, body=request)
-        if cached := fastapi_request.app.state.response_cache.get(cache_key):
-            logger.info("Cache hit for {}", fastapi_request.url.path)
-            return RecommendResponse.model_validate(cached)
-
-    response = await rec_service.recommend_item(request)
-
-    if x_cache_ttl is not None:
-        cache_key = generate_cache_key(fastapi_request.url.path, body=request)
-        fastapi_request.app.state.response_cache.set(
-            cache_key, response.model_dump(), x_cache_ttl
-        )
-
-    return response
+    return await cached_recommendation(
+        fastapi_request,
+        x_cache_ttl,
+        lambda: rec_service.recommend_item(request),
+        cache_key_body=request,
+    )
 
 
 @router.post("/users/{user_id}/recommend")
@@ -74,27 +56,19 @@ async def recommend_user_id(
     x_cache_ttl: Annotated[int | None, Header()] = None,
 ) -> RecommendResponse:
     """Look up a user by ID and generate recommendations."""
-    if x_cache_ttl is not None:
-        cache_key = generate_cache_key(
-            fastapi_request.url.path, params={"limit": limit}
-        )
-        if cached := fastapi_request.app.state.response_cache.get(cache_key):
-            logger.info("Cache hit for {}", fastapi_request.url.path)
-            return RecommendResponse.model_validate(cached)
 
-    response = await rec_service.recommend_for_user(user_id, limit)
-    if not response:
-        raise HTTPException(status_code=404, detail=f"User {user_id} not found")
+    async def get_response() -> RecommendResponse:
+        response = await rec_service.recommend_for_user(user_id, limit)
+        if not response:
+            raise HTTPException(status_code=404, detail=f"User {user_id} not found")
+        return response
 
-    if x_cache_ttl is not None:
-        cache_key = generate_cache_key(
-            fastapi_request.url.path, params={"limit": limit}
-        )
-        fastapi_request.app.state.response_cache.set(
-            cache_key, response.model_dump(), x_cache_ttl
-        )
-
-    return response
+    return await cached_recommendation(
+        fastapi_request,
+        x_cache_ttl,
+        get_response,
+        cache_key_params={"limit": limit},
+    )
 
 
 @router.post("/items/{item_id}/recommend")
@@ -106,24 +80,16 @@ async def recommend_item_id(
     x_cache_ttl: Annotated[int | None, Header()] = None,
 ) -> RecommendResponse:
     """Look up an item by ID and generate similar-item recommendations."""
-    if x_cache_ttl is not None:
-        cache_key = generate_cache_key(
-            fastapi_request.url.path, params={"limit": limit}
-        )
-        if cached := fastapi_request.app.state.response_cache.get(cache_key):
-            logger.info("Cache hit for {}", fastapi_request.url.path)
-            return RecommendResponse.model_validate(cached)
 
-    response = await rec_service.recommend_for_item(item_id, limit)
-    if not response:
-        raise HTTPException(status_code=404, detail=f"Item {item_id} not found")
+    async def get_response() -> RecommendResponse:
+        response = await rec_service.recommend_for_item(item_id, limit)
+        if not response:
+            raise HTTPException(status_code=404, detail=f"Item {item_id} not found")
+        return response
 
-    if x_cache_ttl is not None:
-        cache_key = generate_cache_key(
-            fastapi_request.url.path, params={"limit": limit}
-        )
-        fastapi_request.app.state.response_cache.set(
-            cache_key, response.model_dump(), x_cache_ttl
-        )
-
-    return response
+    return await cached_recommendation(
+        fastapi_request,
+        x_cache_ttl,
+        get_response,
+        cache_key_params={"limit": limit},
+    )

@@ -12,14 +12,9 @@ from loguru import logger
 from agentic_rec.settings import settings
 
 if TYPE_CHECKING:
-    from collections.abc import Awaitable, Callable
+    from collections.abc import Callable
 
     from agentic_rec.models import RecommendRequest, RecommendResponse
-
-    type RecommendMethod[T] = Callable[
-        [T, str, RecommendRequest], Awaitable[RecommendResponse]
-    ]
-    type CacheAccessor[T] = Callable[[T], TLRUCache]
 
 cache_ttl_var: contextvars.ContextVar[float] = contextvars.ContextVar(
     "cache_ttl", default=0
@@ -34,18 +29,16 @@ def create_response_cache() -> TLRUCache:
     return TLRUCache(maxsize=settings.cache_maxsize, ttu=ttu, timer=time.monotonic)
 
 
-def async_cachedmethod[T](
-    cache: CacheAccessor[T],
-) -> Callable[[RecommendMethod[T]], RecommendMethod[T]]:
+def async_cachedmethod(cache: Callable) -> Callable:
     """Async-aware memoization decorator for instance methods.
 
     Uses SHA256 of instructions + request JSON as cache key.
     """
 
-    def decorator(func: RecommendMethod[T]) -> RecommendMethod[T]:
+    def decorator(func: Callable) -> Callable:
         @functools.wraps(func)
         async def wrapper(
-            self: T, instructions: str, request: RecommendRequest
+            self: object, instructions: str, request: RecommendRequest
         ) -> RecommendResponse:
             c = cache(self)
             key = hashlib.sha256(

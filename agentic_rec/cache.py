@@ -8,7 +8,7 @@ from cachetools import TLRUCache
 from agentic_rec.settings import settings
 
 cache_ttl_var: contextvars.ContextVar[float] = contextvars.ContextVar(
-    "cache_ttl", default=settings.cache_ttl
+    "cache_ttl", default=0
 )
 
 

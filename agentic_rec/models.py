@@ -47,7 +47,7 @@ class ItemRecommended(pydantic.BaseModel):
     )
 
 
-class RecommendRequest(pydantic.BaseModel, frozen=True):
+class RecommendRequest(pydantic.BaseModel):
     text: str = pydantic.Field(
         description="User profile or item description as context."
     )

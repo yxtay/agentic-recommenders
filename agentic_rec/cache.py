@@ -12,7 +12,14 @@ from loguru import logger
 from agentic_rec.settings import settings
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Awaitable, Callable
+
+    from agentic_rec.models import RecommendRequest, RecommendResponse
+
+    type RecommendMethod[T] = Callable[
+        [T, str, RecommendRequest], Awaitable[RecommendResponse]
+    ]
+    type CacheAccessor[T] = Callable[[T], TLRUCache]
 
 cache_ttl_var: contextvars.ContextVar[float] = contextvars.ContextVar(
     "cache_ttl", default=0
@@ -27,16 +34,19 @@ def create_response_cache() -> TLRUCache:
     return TLRUCache(maxsize=settings.cache_maxsize, ttu=ttu, timer=time.monotonic)
 
 
-def async_cachedmethod(cache: Callable) -> Callable:
+def async_cachedmethod[T](
+    cache: CacheAccessor[T],
+) -> Callable[[RecommendMethod[T]], RecommendMethod[T]]:
     """Async-aware memoization decorator for instance methods.
 
-    Expects the decorated method signature: (self, instructions: str, request).
     Uses SHA256 of instructions + request JSON as cache key.
     """
 
-    def decorator(func: Callable) -> Callable:
+    def decorator(func: RecommendMethod[T]) -> RecommendMethod[T]:
         @functools.wraps(func)
-        async def wrapper(self: object, instructions: str, request: object) -> object:
+        async def wrapper(
+            self: T, instructions: str, request: RecommendRequest
+        ) -> RecommendResponse:
             c = cache(self)
             key = hashlib.sha256(
                 f"{instructions}:{request.model_dump_json()}".encode()
@@ -56,6 +66,6 @@ def async_cachedmethod(cache: Callable) -> Callable:
             )
             return result
 
-        return wrapper
+        return wrapper  # type: ignore[return-value]
 
     return decorator

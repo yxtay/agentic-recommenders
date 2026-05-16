@@ -18,7 +18,7 @@ from agentic_rec.services.user_service import UserService
 
 @pytest.mark.asyncio
 async def test_recommendation_service_recommend() -> None:
-    from cachetools import TLRUCache
+    from agentic_rec.cache import create_response_cache
 
     mock_item_repo = MagicMock()
     mock_user_repo = MagicMock()
@@ -34,7 +34,7 @@ async def test_recommendation_service_recommend() -> None:
         mock_item_repo,
         mock_user_repo,
         agent=mock_agent,
-        cache=TLRUCache(maxsize=0, ttu=lambda *_: 0),
+        cache=create_response_cache(),
     )
 
     request = RecommendRequest(text="test", limit=5)

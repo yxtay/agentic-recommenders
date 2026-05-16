@@ -1,12 +1,9 @@
 from __future__ import annotations
 
-import hashlib
 from typing import TYPE_CHECKING
 
-from loguru import logger
-
 from agentic_rec.agent import ITEM_INSTRUCTIONS, USER_INSTRUCTIONS, AgentDeps
-from agentic_rec.cache import cache_ttl_var
+from agentic_rec.cache import async_cachedmethod
 from agentic_rec.models import RecommendRequest, RecommendResponse
 
 if TYPE_CHECKING:
@@ -30,29 +27,14 @@ class RecommendationService:
         self.rec_agent = agent
         self.cache = cache
 
+    @async_cachedmethod(cache=lambda self: self.cache)
     async def recommend(
         self, instructions: str, request: RecommendRequest
     ) -> RecommendResponse:
-        """Generate recommendations, returning cached result if available."""
-        key = hashlib.sha256(
-            f"{instructions}:{request.model_dump_json()}".encode()
-        ).hexdigest()
-
-        cached = self.cache.get(key)
-        if cached is not None:
-            logger.info("recommend: cache hit")
-            return cached
-
+        """Generate recommendations via the agent."""
         deps = AgentDeps(item_repository=self.item_repository, request=request)
         response = await self.rec_agent.run(instructions=instructions, deps=deps)
-        result = response.output
-        self.cache[key] = result
-        logger.info(
-            "recommend: {} items (cached ttl={}s)",
-            len(result.items),
-            cache_ttl_var.get(),
-        )
-        return result
+        return response.output
 
     async def recommend_user(self, request: RecommendRequest) -> RecommendResponse:
         """Generate user-based recommendations."""

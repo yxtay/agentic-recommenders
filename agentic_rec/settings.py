@@ -23,6 +23,10 @@ class Settings(BaseSettings):
     # llm
     llm_model: str = "cerebras:gpt-oss-120b"
 
+    # cache
+    cache_ttl: float = 3600
+    cache_maxsize: int = 256
+
     @property
     def items_parquet(self) -> str:
         """Path to processed items parquet file."""

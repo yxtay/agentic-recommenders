@@ -98,6 +98,7 @@ def client(
 
     rec_service = MagicMock(spec=RecommendationService)
     rec_service.recommend = AsyncMock(return_value=mock_agent_response)
+    rec_service.recommend_user = AsyncMock(return_value=mock_agent_response)
     rec_service.recommend_item = AsyncMock(return_value=mock_agent_response)
     rec_service.recommend_for_user = AsyncMock(return_value=mock_agent_response)
     rec_service.recommend_for_item = AsyncMock(return_value=mock_agent_response)

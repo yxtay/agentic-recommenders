@@ -74,7 +74,8 @@ def client(
     mock_users_index: MagicMock,
     mock_agent: MagicMock,
 ) -> Iterator[TestClient]:
-    from agentic_rec.cache import create_response_cache
+    from cachetools import TLRUCache
+
     from agentic_rec.repositories.item_repository import ItemRepository
     from agentic_rec.repositories.user_repository import UserRepository
     from agentic_rec.services.recommendation_service import RecommendationService
@@ -106,7 +107,10 @@ def client(
     user_repo.get_by_id.side_effect = get_user_by_id
 
     rec_service = RecommendationService(
-        item_repo, user_repo, cache=create_response_cache(), agent=mock_agent
+        item_repo,
+        user_repo,
+        cache=TLRUCache(maxsize=0, ttu=lambda *_: 0),
+        agent=mock_agent,
     )
 
     from agentic_rec.dependencies import get_recommendation_service

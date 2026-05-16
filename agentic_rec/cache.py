@@ -12,9 +12,9 @@ cache_ttl_var: contextvars.ContextVar[float] = contextvars.ContextVar(
 )
 
 
-def _ttu(_key: str, _value: object, now: float) -> float:
+def ttu(_key: str, _value: object, now: float) -> float:
     return now + cache_ttl_var.get()
 
 
 def create_response_cache() -> TLRUCache:
-    return TLRUCache(maxsize=settings.cache_maxsize, ttu=_ttu, timer=time.monotonic)
+    return TLRUCache(maxsize=settings.cache_maxsize, ttu=ttu, timer=time.monotonic)

@@ -18,6 +18,8 @@ from agentic_rec.services.user_service import UserService
 
 @pytest.mark.asyncio
 async def test_recommendation_service_recommend() -> None:
+    from cachetools import TLRUCache
+
     mock_item_repo = MagicMock()
     mock_user_repo = MagicMock()
 
@@ -25,16 +27,21 @@ async def test_recommendation_service_recommend() -> None:
         items=[ItemRecommended(id="1", text="Movie", explanation="desc")]
     )
 
-    service = RecommendationService(mock_item_repo, mock_user_repo)
-    # Patch the agent on the service instance
-    service.rec_agent = MagicMock()
-    service.rec_agent.run = AsyncMock(return_value=MagicMock(output=expected_response))
+    mock_agent = MagicMock()
+    mock_agent.run = AsyncMock(return_value=MagicMock(output=expected_response))
+
+    service = RecommendationService(
+        mock_item_repo,
+        mock_user_repo,
+        agent=mock_agent,
+        cache=TLRUCache(maxsize=0, ttu=lambda *_: 0),
+    )
 
     request = RecommendRequest(text="test", limit=5)
 
-    response = await service.recommend(request)
+    response = await service.recommend_user(request)
     assert response == expected_response
-    service.rec_agent.run.assert_called_once()
+    mock_agent.run.assert_called_once()
 
 
 def test_user_service_get_user() -> None:

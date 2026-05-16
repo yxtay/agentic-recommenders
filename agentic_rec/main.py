@@ -7,6 +7,7 @@ from fastapi import FastAPI
 from loguru import logger
 
 from agentic_rec.agent import check_llm
+from agentic_rec.cache import create_response_cache
 from agentic_rec.index import LanceIndex, LanceIndexConfig
 from agentic_rec.routers import health, items, recommendations, users
 from agentic_rec.settings import settings
@@ -22,6 +23,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     app.state.users_index = LanceIndex.load(
         LanceIndexConfig(table_name=settings.users_table_name)
     )
+    app.state.response_cache = create_response_cache()
     app.state.llm_ready = await check_llm()
     logger.info(
         "app ready: {} items, {} users, llm_ready={}",

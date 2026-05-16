@@ -12,6 +12,8 @@ authors = [
 license = "MIT"
 requires-python = ">=3.12,<4"
 dependencies = [
+  "cachetools~=7.1",
+  "cachetools-async>=0.0,<1.0",
   "fastapi[standard]>=0.136,<1.0",
   "jsonargparse[signatures]~=4.48",
   "lancedb[pylance]>=0.19,<1.0",
@@ -31,6 +33,7 @@ dev = [
   "pyarrow-stubs>=20.0",
   "pytest~=9.0",
   "pytest-asyncio~=1.0",
+  "pytest-env~=1.0",
 ]
 
 [project.scripts]
@@ -49,6 +52,10 @@ torch = [{ index = "torch-cpu" }]
 name = "torch-cpu"
 url = "https://download.pytorch.org/whl/cpu"
 explicit = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+env = ["AGENTIC_REC_CACHE_MAXSIZE=0"]
 
 [tool.ruff]
 fix = true

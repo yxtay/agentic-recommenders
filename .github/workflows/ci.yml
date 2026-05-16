@@ -93,6 +93,10 @@ jobs:
           cache-from: ${{ env.GHCR_IMAGE_NAME }}:cache
           load: true
 
+      - run: ${DOCKER_RUN_CMD} --user root "${IMAGE_ID}" chown -R 1000:1000 /work/app/data /work/app/lance_db /tmp/huggingface
+        env:
+          IMAGE_ID: ${{ steps.build.outputs.imageid }}
+
       - run: ${DOCKER_RUN_CMD} "${IMAGE_ID}" uv pip list
         env:
           IMAGE_ID: ${{ steps.build.outputs.imageid }}

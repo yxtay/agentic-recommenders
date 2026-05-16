@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from cachetools_async import cachedmethod
+from loguru import logger
 
 from agentic_rec.agent import ITEM_INSTRUCTIONS, USER_INSTRUCTIONS, AgentDeps
 from agentic_rec.models import RecommendRequest, RecommendResponse
@@ -35,6 +36,7 @@ class RecommendationService:
         """Generate recommendations via the agent."""
         deps = AgentDeps(item_repository=self.item_repository, request=request)
         response = await self.rec_agent.run(instructions=instructions, deps=deps)
+        logger.info("recommend: {} items", len(response.output.items))
         return response.output
 
     async def recommend_user(self, request: RecommendRequest) -> RecommendResponse:

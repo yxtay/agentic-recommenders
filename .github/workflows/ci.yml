@@ -68,11 +68,20 @@ jobs:
     env:
       GHCR_IMAGE_NAME: ghcr.io/${{ github.repository }}
       DOCKER_RUN_CMD: >-
-        docker run
+        docker run --env HF_HOME=/tmp/huggingface -v data:/work/app/data -v lance-db:/work/app/lance_db -v hf-home:/tmp/huggingface
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           sparse-checkout: uv.lock
+
+      - if: ${{ github.ref_name != github.event.repository.default_branch }}
+        uses: BYK/docker-volume-cache-action/restore@main
+        with:
+          key: docker-volumes-${{ runner.os }}
+          volumes: |
+            data
+            lance-db
+            hf-home
 
       - uses: docker/setup-qemu-action@ce360397dd3f832beb865e1373c09c0e9f86d70a # v4
 
@@ -112,6 +121,15 @@ jobs:
         run: ${DOCKER_RUN_CMD} "${IMAGE_ID}" uv run ml_1m
         env:
           IMAGE_ID: ${{ steps.build.outputs.imageid }}
+
+      - if: ${{ github.ref_name != github.event.repository.default_branch }}
+        uses: BYK/docker-volume-cache-action/save@main
+        with:
+          key: docker-volumes-${{ runner.os }}
+          volumes: |
+            data
+            lance-db
+            hf-home
 
       - id: docker_metadata
         uses: docker/metadata-action@030e881283bb7a6894de51c315a6bfe6a94e05cf # v6

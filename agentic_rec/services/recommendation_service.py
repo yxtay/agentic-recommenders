@@ -5,12 +5,13 @@ from typing import TYPE_CHECKING
 
 from loguru import logger
 
-from agentic_rec.agent import ITEM_INSTRUCTIONS, USER_INSTRUCTIONS, AgentDeps, agent
+from agentic_rec.agent import ITEM_INSTRUCTIONS, USER_INSTRUCTIONS, AgentDeps
 from agentic_rec.cache import cache_ttl_var
 from agentic_rec.models import RecommendRequest, RecommendResponse
 from agentic_rec.settings import settings
 
 if TYPE_CHECKING:
+    import pydantic_ai
     from cachetools import TLRUCache
 
     from agentic_rec.repositories.item_repository import ItemRepository
@@ -22,6 +23,7 @@ class RecommendationService:
         self,
         item_repository: ItemRepository,
         user_repository: UserRepository,
+        agent: pydantic_ai.Agent[AgentDeps, RecommendResponse],
         cache: TLRUCache,
     ) -> None:
         self.item_repository = item_repository

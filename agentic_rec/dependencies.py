@@ -34,8 +34,13 @@ def get_user_service(repo: UserRepoDep) -> UserService:
 def get_recommendation_service(
     request: Request, item_repo: ItemRepoDep, user_repo: UserRepoDep
 ) -> RecommendationService:
+    from agentic_rec.agent import agent
+
     return RecommendationService(
-        item_repo, user_repo, cache=request.app.state.response_cache
+        item_repo,
+        user_repo,
+        agent=agent,
+        cache=request.app.state.response_cache,
     )
 
 

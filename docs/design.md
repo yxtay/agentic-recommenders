@@ -349,5 +349,7 @@ export CEREBRAS_API_KEY="..."
 - **Agent as injected dependency**: the agent is passed to `RecommendationService` via constructor
   injection (wired in `dependencies.py`), enabling tests to substitute a mock agent.
 - **Response caching with per-request TTL**: `cachetools.TLRUCache` caches recommendation responses.
-  Each request's `x-cache-ttl` header controls its entry's TTL via a `contextvars.ContextVar` read
-  by the `ttu` function at insertion time. Cache key is SHA256 of instructions + serialized request.
+  The router sets `cache_ttl_var` (a `contextvars.ContextVar`) from the `x-cache-ttl` header; the
+  `ttu` function reads it at cache insertion time. No token reset needed — each async request gets
+  its own context copy. Cache key is SHA256 of instructions + serialized request. Default TTL is 0
+  (no caching) unless the router sets it, making caching opt-in at the API layer.

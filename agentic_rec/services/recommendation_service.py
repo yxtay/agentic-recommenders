@@ -2,8 +2,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from cachetools_async import cachedmethod
+
 from agentic_rec.agent import ITEM_INSTRUCTIONS, USER_INSTRUCTIONS, AgentDeps
-from agentic_rec.cache import async_cachedmethod
 from agentic_rec.models import RecommendRequest, RecommendResponse
 
 if TYPE_CHECKING:
@@ -27,7 +28,7 @@ class RecommendationService:
         self.rec_agent = agent
         self.cache = cache
 
-    @async_cachedmethod(cache=lambda self: self.cache)
+    @cachedmethod(cache=lambda self: self.cache)
     async def recommend(
         self, instructions: str, request: RecommendRequest
     ) -> RecommendResponse:

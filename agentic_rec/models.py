@@ -47,12 +47,15 @@ class ItemRecommended(pydantic.BaseModel):
     )
 
 
-class RecommendRequest(pydantic.BaseModel):
+class RecommendRequest(pydantic.BaseModel, frozen=True):
     text: str = pydantic.Field(
         description="User profile or item description as context."
     )
     history: InteractionHistory
     limit: int = pydantic.Field(default=10, description="Number of items to recommend.")
+
+    def __hash__(self) -> int:
+        return hash(self.model_dump_json())
 
 
 class RecommendResponse(pydantic.BaseModel):

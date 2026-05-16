@@ -273,7 +273,8 @@ Resources loaded once via FastAPI lifespan context manager:
 
 1. `LanceIndex.load(LanceIndexConfig())` — opens items LanceDB table.
 2. `LanceIndex.load(LanceIndexConfig(table_name="users"))` — opens users LanceDB table.
-3. `check_llm()` — verifies LLM API connectivity.
+3. `create_response_cache()` — creates `TLRUCache` for recommendation responses.
+4. `check_llm()` — verifies LLM API connectivity.
 
 ### Dependencies
 
@@ -284,9 +285,12 @@ Injected via FastAPI `Depends` (defined in `agentic_rec/dependencies.py`):
 
 ### Data flow
 
-**`POST /recommend`** — directly invokes `agent.run(instructions=USER_INSTRUCTIONS, deps=...)`.
+**`POST /recommend`** — checks response cache (keyed by SHA256 of instructions + request), then
+invokes `agent.run(instructions=USER_INSTRUCTIONS, deps=...)` on miss. Caller controls cache TTL via
+`x-cache-ttl` header (default: `settings.cache_ttl`, 3600s).
 
-**`POST /recommend/item`** — invokes `agent.run(instructions=ITEM_INSTRUCTIONS, deps=...)`.
+**`POST /recommend/item`** — same caching behavior, invokes `agent.run(instructions=ITEM_INSTRUCTIONS, deps=...)`
+on miss.
 
 **`POST /users/{user_id}/recommend`** — looks up user, builds `RecommendRequest` from user text
 and full history, delegates to `/recommend`.
@@ -311,6 +315,8 @@ history=[], limit=limit)`, delegates to `/recommend/item`.
 | `lance_db_path`    | `lance_db`              | `AGENTIC_REC_LANCE_DB_PATH`    |
 | `items_table_name` | `items`                 | `AGENTIC_REC_ITEMS_TABLE_NAME` |
 | `data_dir`         | `data`                  | `AGENTIC_REC_DATA_DIR`         |
+| `cache_ttl`        | `3600`                  | `AGENTIC_REC_CACHE_TTL`        |
+| `cache_maxsize`    | `256`                   | `AGENTIC_REC_CACHE_MAXSIZE`    |
 
 Set the LLM model and its matching API key:
 
@@ -340,4 +346,8 @@ export CEREBRAS_API_KEY="..."
   lookups by ID. The users table preserves all columns (demographics, history, splits) via PyArrow schema
   inference.
 - **Lifespan over `@app.on_event`**: FastAPI-recommended pattern; events are deprecated.
-- **Module-level agent singleton**: agent is stateless; all per-request context flows through `deps`.
+- **Agent as injected dependency**: the agent is passed to `RecommendationService` via constructor
+  injection (wired in `dependencies.py`), enabling tests to substitute a mock agent.
+- **Response caching with per-request TTL**: `cachetools.TLRUCache` caches recommendation responses.
+  Each request's `x-cache-ttl` header controls its entry's TTL via a `contextvars.ContextVar` read
+  by the `ttu` function at insertion time. Cache key is SHA256 of instructions + serialized request.

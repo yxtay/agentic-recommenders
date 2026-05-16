@@ -88,6 +88,7 @@ Request example:
 ```bash
 curl -X POST http://localhost:3000/recommend \
   -H "Content-Type: application/json" \
+  -H "x-cache-ttl: 3600" \
   -d '{
     "text": "25-year-old male, software engineer, enjoys sci-fi and thriller films",
     "history": [
@@ -107,6 +108,7 @@ curl -X POST http://localhost:3000/recommend \
 | `agentic_rec/index.py`        | LanceDB index: embedding, hybrid search, reranking (items & users)  |
 | `agentic_rec/models.py`       | Pydantic models: request/response types                             |
 | `agentic_rec/agent.py`        | pydantic-ai `Agent` singleton with tools                            |
+| `agentic_rec/cache.py`        | TLRUCache factory and per-request TTL contextvar                    |
 | `agentic_rec/main.py`         | FastAPI service entry point                                         |
 | `agentic_rec/repositories/`   | Repository layer (data access)                                      |
 | `agentic_rec/services/`       | Service layer (business logic)                                      |

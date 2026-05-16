@@ -50,8 +50,11 @@ class RecommendationService:
         deps = AgentDeps(item_repository=self.item_repository, request=request)
         response = await self.rec_agent.run(instructions=instructions, deps=deps)
         result = response.output
-        cache_ttl_var.set(cache_ttl)
-        self.cache[key] = result
+        token = cache_ttl_var.set(cache_ttl)
+        try:
+            self.cache[key] = result
+        finally:
+            cache_ttl_var.reset(token)
         logger.info(
             "recommend: {} items (cached ttl={}s)", len(result.items), cache_ttl
         )

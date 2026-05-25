@@ -21,8 +21,6 @@ class LanceIndexConfig(pydantic.BaseModel):
     table_name: str = settings.items_table_name
     embedder_name: str = settings.embedder_name
     embedder_device: str = "cpu"
-    reranker_name: str = settings.reranker_name
-    reranker_type: str = settings.reranker_type
 
 
 class LanceIndex:
@@ -43,15 +41,6 @@ class LanceIndex:
                 name=self.config.embedder_name,
                 device=self.config.embedder_device,
             )
-        )
-
-    @cached_property
-    def reranker(self) -> Any:  # noqa: ANN401
-        from lancedb.rerankers import AnswerdotaiRerankers
-
-        return AnswerdotaiRerankers(
-            model_name=self.config.reranker_name,
-            model_type=self.config.reranker_type,
         )
 
     def save(self, path: str) -> None:
@@ -146,17 +135,13 @@ class LanceIndex:
         exclude_ids: list[str] | None = None,
         limit: int = 10,
     ) -> pa.Table:
-        """Search with reranking, returning scored results.
+        """Search and return scored results.
 
         query_type can be 'hybrid', 'vector', or 'fts'.
         """
         assert self.table is not None
 
-        query = (
-            self.table.search(text, query_type=query_type)
-            .rerank(self.reranker)
-            .limit(limit)
-        )
+        query = self.table.search(text, query_type=query_type).limit(limit)
 
         if exclude_ids:
             expr = column("id").not_in([literal(v) for v in exclude_ids])

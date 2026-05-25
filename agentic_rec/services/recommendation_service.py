@@ -7,6 +7,7 @@ from loguru import logger
 
 from agentic_rec.agent import ITEM_INSTRUCTIONS, USER_INSTRUCTIONS, AgentDeps
 from agentic_rec.models import RecommendRequest, RecommendResponse
+from agentic_rec.settings import settings
 
 if TYPE_CHECKING:
     import pydantic_ai
@@ -54,7 +55,9 @@ class RecommendationService:
         user = self.user_repository.get_by_id(user_id)
         if not user:
             return None
-        request = RecommendRequest(text=user.text, history=user.history, limit=limit)
+        request = RecommendRequest(
+            text=user.text, history=user.history[-settings.max_history :], limit=limit
+        )
         return await self.recommend_user(request)
 
     async def recommend_for_item(

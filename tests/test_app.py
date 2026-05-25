@@ -133,7 +133,6 @@ class TestHealthz:
         assert "num_users" in data
         assert "llm_ready" in data
         assert "embedder_name" in data
-        assert "reranker_name" in data
         assert "llm_model" in data
 
 

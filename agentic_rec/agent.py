@@ -60,6 +60,7 @@ Prioritize attribute and thematic similarity to the source item.
 
 agent: pydantic_ai.Agent[AgentDeps, RecommendResponse] = pydantic_ai.Agent(
     model=settings.llm_model,
+    model_settings={"thinking": "low"},
     system_prompt=SYSTEM_PROMPT,
     output_type=RecommendResponse,
     defer_model_check=True,
@@ -103,7 +104,7 @@ def search_items(
     result = ctx.deps.item_repository.search(
         query, query_type=query_type, exclude_ids=exclude_ids, limit=limit
     )
-    logger.info("search_items: {} results", result.num_rows)
+    logger.info("search_items: {}, {} results", query_type, result.num_rows)
     return _item_candidate_adapter.validate_python(result.to_pylist())
 
 
@@ -142,7 +143,12 @@ def main(limit: int = 5) -> None:
     users_table = pq.read_table(settings.users_parquet, memory_map=True)
     sample_idx = random.randrange(users_table.num_rows)
     sample_user = users_table.slice(sample_idx, 1).to_pylist()[0]
-    request = RecommendRequest.model_validate({**sample_user, "limit": limit})
+    data = {
+        "text": sample_user["text"],
+        "history": sample_user["history"][-settings.max_history :],
+        "limit": limit,
+    }
+    request = RecommendRequest.model_validate(data)
     rich.print(request)
 
     deps = AgentDeps(item_repository=item_repository, request=request)

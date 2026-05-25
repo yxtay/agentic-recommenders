@@ -26,6 +26,5 @@ def healthz(
         num_users=users_repo.count_rows(),
         llm_ready=request.app.state.llm_ready,
         embedder_name=settings.embedder_name,
-        reranker_name=settings.reranker_name,
         llm_model=settings.llm_model,
     )

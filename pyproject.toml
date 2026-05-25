@@ -21,7 +21,6 @@ dependencies = [
   "polars[pandas]~=1.40",
   "pydantic-ai~=1.43",
   "pydantic-settings~=2.0",
-  "rerankers[pylate,transformers]>=0.9,<1.0",
   "sentence-transformers~=5.3",
   "sqlalchemy~=2.0",
   "torch~=2.9",

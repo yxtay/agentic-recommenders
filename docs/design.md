@@ -35,7 +35,7 @@ differences from the paper:
 | Aspect          | Paper (ARAG)                     | This implementation                     |
 |-----------------|----------------------------------|-----------------------------------------|
 | Agents          | 4 specialized LLM agents         | 1 agent with tool access                |
-| Retrieval       | Cosine similarity top-k          | Hybrid (vector + FTS) with reranking    |
+| Retrieval       | Cosine similarity top-k          | Hybrid (vector + FTS)                   |
 | Filtering       | NLI agent with threshold scoring | Agent reasoning (no explicit threshold) |
 | Diversity       | Not explicitly addressed         | Multi-query retrieval (2-4 calls)       |
 | Dataset         | Amazon Reviews (3 categories)    | MovieLens 1M                            |
@@ -112,7 +112,6 @@ class HealthResponse(pydantic.BaseModel):
     num_users: int
     llm_ready: bool
     embedder_name: str
-    reranker_name: str
     llm_model: str
 ```
 
@@ -130,8 +129,6 @@ class LanceIndexConfig(pydantic.BaseModel):
     table_name: str         # "items" or "users"
     embedder_name: str      # e.g. "lightonai/DenseOn"
     embedder_device: str    # "cpu"
-    reranker_name: str      # e.g. "lightonai/LateOn"
-    reranker_type: str      # "pylate"
 ```
 
 ### LanceIndex class
@@ -139,7 +136,6 @@ class LanceIndexConfig(pydantic.BaseModel):
 Uses `functools.cached_property` for lazy-loaded components (each loaded once on first access):
 
 - **`embedder`** — sentence-transformers model via lancedb registry
-- **`reranker`** — `AnswerdotaiRerankers` with pylate model type
 
 ### Methods
 
@@ -158,7 +154,7 @@ The `vector` column is computed automatically via the configured embedder. Steps
 
 **`search(text, query_type="hybrid", exclude_ids=None, limit=20) → pa.Table`**
 
-Vector, FTS, or Hybrid search with answerdotai reranking. Filter built via sqlalchemy
+Vector, FTS, or Hybrid search. Filter built via sqlalchemy
 (`column("id").not_in(...)` compiled with `literal_binds=True`) for SQL injection safety.
 Returns dataset with columns: `id`, `text`, `vector`, `score`.
 
@@ -310,8 +306,6 @@ history=[], limit=limit)`, delegates to `/recommend/item`.
 |--------------------|-------------------------|--------------------------------|
 | `llm_model`        | `cerebras:gpt-oss-120b` | `AGENTIC_REC_LLM_MODEL`        |
 | `embedder_name`    | `lightonai/DenseOn`     | `AGENTIC_REC_EMBEDDER_NAME`    |
-| `reranker_name`    | `lightonai/LateOn`      | `AGENTIC_REC_RERANKER_NAME`    |
-| `reranker_type`    | `pylate`                | `AGENTIC_REC_RERANKER_TYPE`    |
 | `lance_db_path`    | `lance_db`              | `AGENTIC_REC_LANCE_DB_PATH`    |
 | `items_table_name` | `items`                 | `AGENTIC_REC_ITEMS_TABLE_NAME` |
 | `data_dir`         | `data`                  | `AGENTIC_REC_DATA_DIR`         |

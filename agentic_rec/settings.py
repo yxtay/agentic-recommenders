@@ -17,11 +17,10 @@ class Settings(BaseSettings):
     items_table_name: str = "items"
     users_table_name: str = "users"
     embedder_name: str = "lightonai/DenseOn"
-    reranker_name: str = "lightonai/LateOn"
-    reranker_type: str = "pylate"
 
     # llm
     llm_model: str = "cerebras:gpt-oss-120b"
+    max_history: int = 20
 
     # cache
     cache_ttl: float = 3600

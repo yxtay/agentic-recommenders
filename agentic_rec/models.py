@@ -81,5 +81,4 @@ class HealthResponse(pydantic.BaseModel):
     num_users: int = pydantic.Field(description="Number of users in the index.")
     llm_ready: bool = pydantic.Field(description="Whether the LLM API is reachable.")
     embedder_name: str = pydantic.Field(description="Configured embedding model name.")
-    reranker_name: str = pydantic.Field(description="Configured reranker model name.")
     llm_model: str = pydantic.Field(description="Configured LLM model identifier.")

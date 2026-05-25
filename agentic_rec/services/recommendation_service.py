@@ -5,9 +5,9 @@ from typing import TYPE_CHECKING
 from cachetools_async import cachedmethod
 from loguru import logger
 
-from agentic_rec import settings
 from agentic_rec.agent import ITEM_INSTRUCTIONS, USER_INSTRUCTIONS, AgentDeps
 from agentic_rec.models import RecommendRequest, RecommendResponse
+from agentic_rec.settings import settings
 
 if TYPE_CHECKING:
     import pydantic_ai

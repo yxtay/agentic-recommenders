@@ -49,7 +49,7 @@ def download_data(
         logger.info("downloading data: {}", url)
         with (
             httpx.stream("GET", url) as resp,
-            tempfile.NamedTemporaryFile(delete=False) as f,
+            tempfile.NamedTemporaryFile() as f,
         ):
             resp.raise_for_status()
             for chunk in resp.iter_bytes():

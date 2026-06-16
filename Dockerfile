@@ -42,8 +42,7 @@ EOF
 RUN apt-get update && \
     apt-get upgrade --yes && \
     apt-get install --yes --no-install-recommends \
-        build-essential \
-        ca-certificates \
+    build-essential \
         curl \
     && rm -rf /var/lib/apt/lists/*
 

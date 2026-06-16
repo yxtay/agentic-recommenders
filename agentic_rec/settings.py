@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     lance_db_path: str = "lance_db"
     items_table_name: str = "items"
     users_table_name: str = "users"
-    embedder_name: str = "lightonai/DenseOn"
+    embedder_name: str = "sentence-transformers/all-MiniLM-L6-v2"
 
     # llm
     llm_model: str = "cerebras:gpt-oss-120b"

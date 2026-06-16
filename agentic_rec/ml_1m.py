@@ -54,7 +54,7 @@ def download_data(
             resp.raise_for_status()
             for chunk in resp.iter_bytes():
                 f.write(chunk)
-            shutil.move(f.name, dest)
+            pathlib.Path(f.name).rename(dest)
 
     logger.info("data downloaded: {}", dest)
     return dest

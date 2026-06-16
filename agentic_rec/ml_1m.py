@@ -38,7 +38,7 @@ def download_data(
     Raises:
         httpx.HTTPError: If the HTTP request fails while downloading.
     """
-    import httpx2
+    import httpx
 
     # prepare destination
     dest = pathlib.Path(dest_dir, pathlib.Path(url).name)
@@ -48,9 +48,7 @@ def download_data(
     if not dest.exists() or overwrite:
         logger.info("downloading data: {}", url)
         with (
-            httpx2.stream(
-                "GET", url, follow_redirects=True, headers={"User-Agent": "Mozilla/5.0"}
-            ) as resp,
+            httpx.stream("GET", url) as resp,
             tempfile.NamedTemporaryFile(delete=False) as f,
         ):
             resp.raise_for_status()

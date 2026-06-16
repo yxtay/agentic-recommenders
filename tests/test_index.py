@@ -10,7 +10,7 @@ from agentic_rec.index import LanceIndex, LanceIndexConfig
 
 # ── shared integration fixtures ────────────────────────────────────────────
 
-EMBEDDING_DIM = 768
+EMBEDDING_DIM = 384
 
 
 @pytest.fixture(scope="session")

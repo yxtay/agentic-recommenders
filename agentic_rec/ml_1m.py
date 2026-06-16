@@ -48,7 +48,7 @@ def download_data(
     if not dest.exists() or overwrite:
         logger.info("downloading data: {}", url)
         with (
-            httpx.stream("GET", url) as resp,
+            httpx.stream("GET", url, follow_redirects=True) as resp,
             tempfile.NamedTemporaryFile(delete=False) as f,
         ):
             resp.raise_for_status()

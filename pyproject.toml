@@ -23,7 +23,7 @@ dependencies = [
   "pydantic-settings~=2.0",
   "sentence-transformers~=5.3",
   "sqlalchemy~=2.0",
-  "torch~=2.12",
+  "torch~=2.13",
 ]
 
 [dependency-groups]

@@ -10,6 +10,8 @@ import lancedb
 import lancedb.table
 import pyarrow as pa
 import pydantic
+from lancedb.embeddings import EmbeddingFunctionConfig
+from lancedb.index import FTS, BTree, IvfRq
 from loguru import logger
 from sqlalchemy import column, literal
 
@@ -76,8 +78,6 @@ class LanceIndex:
         if self.table is not None and not overwrite:
             return self.table
 
-        from lancedb.embeddings import EmbeddingFunctionConfig
-
         # Scalar index requires pa.string(), not large_string
         id_idx = data.schema.get_field_index("id")
         if data.schema.field("id").type != pa.string():
@@ -95,15 +95,13 @@ class LanceIndex:
             embedding_functions=[embedding_function],
             mode="overwrite",
         )
-        self.table.create_scalar_index("id")
-        self.table.create_fts_index("text")
+        self.table.create_index("id", config=BTree())
+        self.table.create_index("text", config=FTS())
 
         num_partitions = 2 ** int(math.log2(max(1, data.num_rows)) / 2)
         self.table.create_index(
-            vector_column_name="vector",
-            metric="cosine",
-            index_type="IVF_RQ",
-            num_partitions=num_partitions,
+            "vector",
+            config=IvfRq(distance_type="cosine", num_partitions=num_partitions),
         )
         self.table.optimize(
             cleanup_older_than=datetime.timedelta(days=0),

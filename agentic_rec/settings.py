@@ -19,7 +19,7 @@ class Settings(BaseSettings):
     embedder_name: str = "lightonai/DenseOn"
 
     # llm
-    llm_model: str = "cerebras:gpt-oss-120b"
+    llm_model: str = "cerebras:gemma-4-31b"
     max_history: int = 20
 
     # cache

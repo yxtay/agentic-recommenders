@@ -30,10 +30,6 @@
       "matchUpdateTypes": ["minor"]
     },
     {
-      "matchPackageNames": ["lightning"],
-      "allowedVersions": "<2.5.1 || >=2.5.7"
-    },
-    {
       "matchDepNames": ["gitleaks/gitleaks"],
       "allowedVersions": ">8.30.1"
     }

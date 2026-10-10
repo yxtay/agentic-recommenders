@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import datetime
+import datetime as dt
 from unittest.mock import MagicMock
 
 import pyarrow as pa
@@ -37,13 +37,13 @@ def sample_request() -> RecommendRequest:
         "history": [
             {
                 "item_id": "1",
-                "event_datetime": datetime.datetime(2024, 1, 1, tzinfo=datetime.UTC),
+                "event_datetime": dt.datetime(2024, 1, 1, tzinfo=dt.UTC),
                 "event_name": "rating",
                 "event_value": 5.0,
             },
             {
                 "item_id": "2",
-                "event_datetime": datetime.datetime(2024, 1, 2, tzinfo=datetime.UTC),
+                "event_datetime": dt.datetime(2024, 1, 2, tzinfo=dt.UTC),
                 "event_name": "rating",
                 "event_value": 3.0,
             },

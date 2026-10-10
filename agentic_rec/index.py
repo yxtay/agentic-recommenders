@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import datetime
+import datetime as dt
 import math
 import shutil
 from functools import cached_property
@@ -104,7 +104,7 @@ class LanceIndex:
             config=IvfRq(distance_type="cosine", num_partitions=num_partitions),
         )
         self.table.optimize(
-            cleanup_older_than=datetime.timedelta(days=0),
+            cleanup_older_than=dt.timedelta(days=0),
             delete_unverified=True,
         )
 

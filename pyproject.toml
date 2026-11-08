@@ -12,7 +12,7 @@ authors = [
 license = "MIT"
 requires-python = ">=3.12,<4"
 dependencies = [
-  "cachetools~=7.1",
+  "cachetools~=8.0",
   "cachetools-async>=0.0,<1.0",
   "fastapi[standard]>=0.136,<1.0",
   "jsonargparse[signatures]~=4.48",
